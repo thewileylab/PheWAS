@@ -36,7 +36,7 @@
 #' @importFrom DBI collect
 #' @importFrom dplyr count distinct group_by filter inner_join left_join pull rename select summarise transmute union_all
 #' @importFrom magrittr %>% extract2
-#' @importFrom rlang abort format_error_bullets inform
+#' @importFrom rlang abort format_error_bullets inform warn
 #' 
 #' @return A DBI tbl connection. The first column contains the supplied id for each individual (preserving the name of the original column). 
 #' The following columns contain the phecode and case_status of all present phewas codes. They contain T/F/NA for case/control/exclude or 
@@ -191,6 +191,7 @@ dbi_createPhenotypes <- function(id.vocab.code.index,
     ### Use the original input ID column name 
     phens <- phens %>%
       rename(!!id.name := 1)
-    
+  
+  ## Return the output ----  
     phens
     }
