@@ -27,8 +27,6 @@
 #' set to NA.
 #' @param full.population.ids List of IDs in the "complete" population. This allows for individuals with no observed codes to have 
 #' appropriate "control" status, eg 0s or FALSE in every field.
-#' @param aggregate.fun Aggregate function for duplicated phenotypes (phecodes, etc) in an individual. The default supports will 
-#' use \code{sum} for numeric values, otherwise it will count the distinct values, eg, for dates.
 #' @param vocabulary.map Map between supplied vocabularies and phecodes. Allows for custom phecode maps. By default uses 
 #' \code{\link[PheWAS:phecode_map]{PheWAS::phecode_map}}, which supports ICD9CM (v1.2) and ICD10CM (beta-2018). The package also 
 #' includes the ICD10 beta map (\code{\link[PheWAS:phecode_map_icd10]{PheWAS::phecode_map_icd10}}), which can be used in this parameter.
@@ -36,8 +34,9 @@
 #' @param exclusion.map Map between phecodes and their exclusions. By default uses the PheWAS::phecode_exclude.
 #'
 #' @importFrom DBI collect
-#' @importFrom dplyr count distinct group_by inner_join left_join pull rename summarise transmute union_all
+#' @importFrom dplyr count distinct group_by filter inner_join left_join pull rename select summarise transmute union_all
 #' @importFrom magrittr %>% extract2
+#' @importFrom rlang abort format_error_bullets inform
 #' 
 #' @return A DBI tbl connection. The first column contains the supplied id for each individual (preserving the name of the original column). 
 #' The following columns contain the phecode and case_status of all present phewas codes. They contain T/F/NA for case/control/exclude or 
@@ -58,97 +57,86 @@ dbi_createPhenotypes <- function(id.vocab.code.index,
                                  exclusion.map=PheWAS::phecode_exclude
                                  )
   {
-  ## Obtain ID column name
-  id.name=colnames(id.vocab.code.index)[1]
-  ## Warn if id.sex information is not provided.
-    if( missing(id.sex) ) { warning("It is recommended to provide id.sex information to help address spurious sex-specific associations.") }
-    
+  ## Setup ----
+  ### Obtain ID column name ----
+    id.name=colnames(id.vocab.code.index)[1]
+  
+  ### Warn if id.sex is not provided ----
+    if( missing(id.sex) ) { warn(format_error_bullets(c('!'="It is recommended to provide id.sex information to help address spurious sex-specific associations.")) ) }
+  
+  ## Translate to Phecode ----  
     if( !translate ) {
-      # Warn about exclusions if input is not translated and not phecodes. Same with id.sex
-      # if(add.phecode.exclusions & sum(tolower(id.vocab.code.index[[2]])=='phecode')!=nrow(id.vocab.code.index)){stop("Codes are not translated and vocab is not 'phecode' for every row, but exclusions are to be applied. Ensure that the code column has only phecodes or disable add.phecode.exclusions for accurate results.")}
+      ### Warn about exclusions if input is not translated and not phecodes. 
       if(add.phecode.exclusions & id.vocab.code.index %>% count(code) %>% pull(n) %>% sum() !=  id.vocab.code.index %>% count() %>% pull(n)) {
-        stop("Codes are not translated and vocab is not 'phecode' for every row, but exclusions are to be applied. Ensure that the code column has only phecodes or disable add.phecode.exclusions for accurate results.")
-      }
-      # if(!missing(id.sex) & sum(tolower(id.vocab.code.index[[2]])=='phecode')!=nrow(id.vocab.code.index)){stop("Codes are not translated and vocab is not 'phecode' for every row, but id.sex is supplied for sex-based exclusions. Ensure that the code column has only phecodes or omit id.sex for accurate results.")}
+        abort("Codes are not translated and vocab is not 'phecode' for every row, but exclusions are to be applied. Ensure that the code column has only phecodes or disable add.phecode.exclusions for accurate results.")
+        }
+      ### Warn about exclusions if input is not translated and not phecodes.
       if( !missing(id.sex )  & id.vocab.code.index %>% count(code) %>% pull(n) %>% sum() !=  id.vocab.code.index %>% count() %>% pull(n)) {
-        stop("Codes are not translated and vocab is not 'phecode' for every row, but id.sex is supplied for sex-based exclusions. Ensure that the code column has only phecodes or omit id.sex for accurate results.")
-      }
-      # phemapped=tbl_df(data.frame(id=id.vocab.code.index[[1]],code=id.vocab.code.index[[3]],index=id.vocab.code.index[[4]],stringsAsFactors = F))
+        abort("Codes are not translated and vocab is not 'phecode' for every row, but id.sex is supplied for sex-based exclusions. Ensure that the code column has only phecodes or omit id.sex for accurate results.")
+        }
       phemapped=id.vocab.code.index
-    } else {
-      #check to make sure numeric codes were not passed in
-      # if(!class(id.vocab.code.index[[3]]) %in% c("character","factor")) {stop("Please ensure character or factor code representation. Some vocabularies, eg ICD9CM, require strings to be represented accurately: E.G.: 250, 250.0, and 250.00 are different codes and necessitate string representation")}
-      if( !id.vocab.code.index %>% head() %>% collect() %>% lapply(type_sum) %>% magrittr::extract2(3) %in% c("chr","fct") ) {
-        stop("Please ensure character or factor code representation. Some vocabularies, eg ICD9CM, require strings to be represented accurately: E.G.: 250, 250.0, and 250.00 are different codes and necessitate string representation")
-      }
-      id.vocab.code.index_cols <- colnames(id.vocab.code.index)
-      id.vocab.code.index <- id.vocab.code.index %>%
-        rename('id' = id.vocab.code.index_cols[[1]], 'vocabulary_id' = id.vocab.code.index_cols[[2]], 'code' = id.vocab.code.index_cols[[3]], 'index' = id.vocab.code.index_cols[[4]])
-      message("Mapping codes to phecodes...")
-      phemapped <- dbi_mapCodesToPhecodes(input = id.vocab.code.index, vocabulary.map=vocabulary.map, rollup.map=rollup.map) %>%
-        transmute(id, code=phecode, index)
-    }
+      } else {
+        ### check to make sure numeric codes were not passed in
+        if( !id.vocab.code.index %>% head() %>% collect() %>% lapply(type_sum) %>% magrittr::extract2(3) %in% c("chr","fct") ) {
+          abort("Please ensure character or factor code representation. Some vocabularies, eg ICD9CM, require strings to be represented accurately: E.G.: 250, 250.0, and 250.00 are different codes and necessitate string representation")
+          }
+        id.vocab.code.index_cols <- colnames(id.vocab.code.index)
+        id.vocab.code.index <- id.vocab.code.index %>%
+          rename('id' = id.vocab.code.index_cols[[1]], 
+                 'vocabulary_id' = id.vocab.code.index_cols[[2]], 
+                 'code' = id.vocab.code.index_cols[[3]], 
+                 'index' = id.vocab.code.index_cols[[4]]
+                 )
+        inform(format_error_bullets(c('i' = "Mapping codes to phecodes...")) )
+        phemapped <- dbi_mapCodesToPhecodes(input = id.vocab.code.index, vocabulary.map=vocabulary.map, rollup.map=rollup.map) %>%
+          transmute(id, code=phecode, index)
+        }
     
-    message("Aggregating codes...")
-    # phecode=ungroup(summarize(group_by(phemapped,id,code),count=aggregate.fun(index)))
+  ## Aggregate Codes ----  
+    inform(format_error_bullets(c('i' = "Aggregating codes...")) )
     if( is.numeric(phemapped %>% head() %>% collect() %>% pull(index)) ) {
       phecode <- phemapped %>%
         group_by(id,code) %>%
         summarise(count = sum(index, na.rm = T), .groups = 'drop')
-    } else {
-      phecode <- phemapped %>%
-        group_by(id,code) %>%
-        summarise(count = length(distinct(index)), .groups = 'drop' )
-    }
-    
-    # phecode=phecode[phecode$count>0,]
+      } else {
+        phecode <- phemapped %>%
+          group_by(id,code) %>%
+          summarise(count = length(distinct(index)), .groups = 'drop' )
+        }
     phecode <- phecode %>%
       filter(count > 0)
-    
-    #Check exclusions, and add them to the list
+  
+  ## Map Exclusions ----
+    ### Check exclusions, and add them to the list
     if( add.phecode.exclusions ) {
-      message("Mapping exclusions...")
+      inform(format_error_bullets(c('i'= "Mapping exclusions...")) )
       exclusions <- phecode %>%
         rename(exclusion_criteria=code) %>%
         inner_join(exclusion.map, by = "exclusion_criteria")
       exclusions <- exclusions %>%
-        transmute(id, code, count= -1) %>%
+        transmute(id, code, count = -1) %>%
         distinct()
       phecode <- union_all(phecode, exclusions)
-    }
+      }
     
-    #If there is request for a min code count, adjust counts to -1 if needed
-    # if(!is.na(min.code.count) & ( max(!is.na(phecode$count) & phecode$count<min.code.count) ) ) {
-    #   phecode[!is.na(phecode$count)&phecode$count<min.code.count,]$count=-1
-    # }
+    ### If there is request for a min code count, adjust counts to -1 if needed
     if(!is.na(min.code.count)) {
       phecode <- phecode %>%
         mutate(count = case_when(!is.na(count) & count < min.code.count ~ -1,
                                  TRUE ~ count)
-        )
-    }
+               )
+      }
     
     if( !is.na(min.code.count) | add.phecode.exclusions ) {
-      message("Coalescing exclusions and min.code.count as applicable...")
-      # phecode=ungroup(summarize(group_by(phecode,id,code),count=max(count)))
+      inform(format_error_bullets(c('i' = "Coalescing exclusions and min.code.count as applicable...")) )
       phecode <- phecode %>%
         group_by(id, code) %>%
         summarise(count = max(count, na.rm = T), .groups = 'drop') ##???????????
-    }
+      }
     
-    # message("Reshaping data...")
-    # # phens=spread(phecode,code,count,fill=0)
-    # phens <- phecode %>%
-    #   mutate(code = str_replace(code, '\\.','_') ) %>% ## BQ Col Restrictions
-    #   pivot_wider(names_from = code, names_prefix = 'code_', names_sort = T, values_from = count) %>% ## values_fill doesn't work right
-    #   mutate(across(starts_with('code_'), ~case_when(is.na(.x) ~ 0,
-    #                                                  TRUE ~ .x)
-    #                 )
-    #          ) %>%
-    #   compute()
-    
-    rlang::inform(rlang::format_error_bullets(c('i' = glue::glue('Long data is {crayon::red("l")}{crayon::green("o")}{crayon::yellow("o")}{crayon::blue("o")}{crayon::magenta("o")}{crayon::cyan("o")}{crayon::white("o")}{crayon::silver("o")}{crayon::red("o")}{crayon::green("o")}{crayon::yellow("o")}{crayon::blue("o")}{crayon::magenta("o")}{crayon::cyan("o")}{crayon::white("n")}{crayon::silver("g")}...!'))))
-    ## Add Controls
+  ## Add Population Controls ----  
+  # rlang::inform(rlang::format_error_bullets(c('i' = glue::glue('Long data is {crayon::red("l")}{crayon::green("o")}{crayon::yellow("o")}{crayon::blue("o")}{crayon::magenta("o")}{crayon::cyan("o")}{crayon::white("o")}{crayon::silver("o")}{crayon::red("o")}{crayon::green("o")}{crayon::yellow("o")}{crayon::blue("o")}{crayon::magenta("o")}{crayon::cyan("o")}{crayon::white("n")}{crayon::silver("g")}...!'))))
+    inform(format_error_bullets(c('i' = 'Add population controls...')) )
     distinct_phe_population_ids <- phecode %>%
       distinct(id)
     distinct_phe_population <- phecode %>%
@@ -159,76 +147,50 @@ dbi_createPhenotypes <- function(id.vocab.code.index,
     phecode <- phecode %>%
       full_join(control_setup)
     
-    # #Set exclusions to NA, preserving IDs just in case one is -1
-    # # tmp_id=phens[,1]
-    # # phens[phens==-1]=NA
-    # # phens[,1]=tmp_id
-    # phens <- phens %>%
-    #   mutate(across(starts_with('code_'), ~case_when(.x == -1 ~ NA,
-    #                                                  TRUE ~ .x)
-    #                 )
-    #          )
-    ## Exclusions to NA, controls to 0
+    ### Set exclusions to NA, controls to 0, preserving IDs just in case one is -1 ----
     phens <- phecode %>%
       mutate(count = case_when(is.na(count) ~ 0,
                                count == -1 ~ NA,
-                               TRUE ~ count)
-      ) %>%
+                               TRUE ~ count
+                               )
+             ) %>%
       select(-count_2)
     
-    #Add in inds present in input or the full population list, but without mapped phecodes
-    # missing_ids=setdiff(full.population.ids, phens %>% select("id") )
+    ### Add back in ids present in input or the full population list, but without mapped phecodes ----
     missing_ids <- full.population.ids %>%
       anti_join(phens %>% select("id") )
     
     if( count(missing_ids) %>% pull(n) > 0 ) {
-      # empty_record=phens[1,-1]
-      # empty_record[]=0
-      # empty_record <- phens %>%
-      #   head(1) %>%
-      #   select(-1) %>%
-      #   mutate(across(everything(), ~0))
-      # missing_ids <- union_all(missing_ids, empty_record) %>%
-      #   filter(!is.na(id)) %>%
-      #   mutate(across(starts_with('code'), ~ 0))
       empty_records <- missing_ids %>%
         full_join(distinct_phe_population, by = character()) %>%
         mutate(count = 0)
-      # phens=rbind(phens,data.frame(id=missing_ids,empty_record,check.names=F))
       phens <- union_all(phens, empty_records)
-    }
+      }
     
-    #Change to logical if there is a min code count
-    # if(!is.na(min.code.count)) {phens[,-1]=phens[,-1]>0}
+    ### Change to logical if there is a min code count ----
     if( !is.na(min.code.count) ) {
-      # phens <- phens %>%
-      #   mutate(across(starts_with('code_'), ~case_when(is.na(.x) ~ NA,
-      #                                                  .x > 0 ~ TRUE,
-      #                                                  TRUE ~ FALSE
-      #                                                  )
-      #                 )
-      #          )
       phens <- phens %>%
         mutate(count = case_when(is.na(count) ~ NA,
                                  count > 0 ~ TRUE,
-                                 TRUE ~ FALSE)
-        )
-    }
-    
-    #If there are sex restrictions, set them to NA
+                                 TRUE ~ FALSE
+                                 )
+               )
+      }
+  
+  ## Gender Restrictions ----
+    ### If there are sex restrictions, set them to NA
     if( !missing(id.sex) ) {
       phens <- dbi_restrictPhecodesBySex(phens,id.sex)
-    }
+      }
     
-    #Limit to full population ids
-    # phens = filter(phens, id %in% full.population.ids)
+  ## Limit to full population ids ----
     phens <- full.population.ids %>%
       left_join(phens)
     
-    #Rename the ID column to the input ID column name
-    # names(phens)[1]=id.name
+  ## Rename the ID column ----
+    ### Use the original input ID column name 
     phens <- phens %>%
       rename(!!id.name := 1)
     
     phens
-  }
+    }

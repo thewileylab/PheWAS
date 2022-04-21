@@ -37,9 +37,6 @@ set to NA.}
 \item{full.population.ids}{List of IDs in the "complete" population. This allows for individuals with no observed codes to have 
 appropriate "control" status, eg 0s or FALSE in every field.}
 
-\item{aggregate.fun}{Aggregate function for duplicated phenotypes (phecodes, etc) in an individual. The default supports will 
-use \code{sum} for numeric values, otherwise it will count the distinct values, eg, for dates.}
-
 \item{vocabulary.map}{Map between supplied vocabularies and phecodes. Allows for custom phecode maps. By default uses 
 \code{\link[PheWAS:phecode_map]{PheWAS::phecode_map}}, which supports ICD9CM (v1.2) and ICD10CM (beta-2018). The package also 
 includes the ICD10 beta map (\code{\link[PheWAS:phecode_map_icd10]{PheWAS::phecode_map_icd10}}), which can be used in this parameter.}
