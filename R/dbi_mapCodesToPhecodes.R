@@ -23,6 +23,11 @@
 #' if one is seeking to only consider the directly mapped phecodes.
 #' @param make.distinct Boolean value. Should duplicate rows be removed during mapping? Default is \code{TRUE}. 
 #' Useful to reduce data size, especially when another column, eg date of code, is provided.
+#' 
+#' @importFrom dbi collect
+#' @importFrom dplyr case_when count distinct filter inner_join pull rename select
+#' @importFrom magrittr %>% extract2
+#' @importFrom rlang abort format_error_bullets warn
 #'
 #' @return A DBI tbl connection containing the columns in \code{input}, except the origial \code{code} and \code{vocabulary_id} 
 #' columns have been replaced with \code{phecode} now containing the phecode as character. 
@@ -34,39 +39,43 @@ dbi_mapCodesToPhecodes <-
   function(input,
            vocabulary.map=PheWAS::phecode_map,
            rollup.map=PheWAS::phecode_rollup_map,
-           make.distinct=TRUE) {
-    if(sum(colnames(input) %in% c("vocabulary_id","code")) != 2) {
-      stop("Must supply a data frame with 'vocabulary_id' and 'code' columns")
+           make.distinct=TRUE) 
+  {
+  ## Input Validation ----  
+  if(sum(colnames(input) %in% c("vocabulary_id","code")) != 2) {
+    abort("Must supply a data frame with 'vocabulary_id' and 'code' columns")
     }
-    if(!input %>% head() %>% collect() %>% lapply(type_sum) %>% magrittr::extract2(3) %in% c("chr","fct")) {
-      stop("Please ensure character or factor code representation. Some vocabularies, eg ICD9CM, require strings to be represented accurately: E.G.: 250, 250.0, and 250.00 are different codes and necessitate string representation")
+  
+  if(!input %>% head() %>% collect() %>% lapply(type_sum) %>% magrittr::extract2(3) %in% c("chr","fct")) {
+    abort("Please ensure character or factor code representation. Some vocabularies, eg ICD9CM, require strings to be represented accurately: E.G.: 250, 250.0, and 250.00 are different codes and necessitate string representation")
     }
-    
-    if( !is.null(vocabulary.map) ) {
-      #Perform the direct map
-      withCallingHandlers(output <- input %>%
-                            inner_join(vocabulary.map, by=c("vocabulary_id","code")),
-                          warning = function(w) { if (grepl("coercing into character vector", w$message)) {invokeRestart("muffleWarning")}})
-      #Remove old columns
-      output <- output %>%
-        select(-code,-vocabulary_id) %>%
-        rename(code=phecode)
+  
+  ## Map ICD code to Phecode ----
+  if( !is.null(vocabulary.map) ) {
+    ### Perform the direct map
+    withCallingHandlers(output <- input %>%
+                          inner_join(vocabulary.map, by=c("vocabulary_id","code")),
+                        warning = function(w) { if (grepl("coercing into character vector", w$message)) {invokeRestart("muffleWarning")}})
+    ### Remove old columns
+    output <- output %>%
+      select(-code,-vocabulary_id) %>%
+      rename(code=phecode)
     } else {
-      #Warn if the vocabulary IDs are not phecodes
+      ### Warn if the vocabulary IDs are not phecodes
       if( input %>% mutate(is_phecode = case_when(vocabulary_id == 'phecode' ~ 1, TRUE ~ 0)) %>% count(is_phecode) %>% pull(n) %>% sum() !=0 ) {
-        warning("Phecode mapping was not requested, but the vocabulary_id of all codes is not 'phecode'")}
-      #Prepare for just the phecode expansion
+        warn(format_error_bullets(c('!' = "Phecode mapping was not requested, but the vocabulary_id of all codes is not 'phecode'"))) }
+      ### Prepare for just the phecode expansion
       output <- input %>%
         filter(vocabulary_id=="phecode") %>%
         select(-vocabulary_id)
-    }
+      }
     
-    #Make distinct
+  ## Make distinct ----
     if( make.distinct ) {
       output <- distinct(output)
-    }
+      }
     
-    #Perform the rollup
+  ## Perform the rollup ----
     if( !is.null(rollup.map) ) {
       withCallingHandlers(output <- output %>%
                             inner_join(rollup.map,by="code"),
@@ -74,15 +83,16 @@ dbi_mapCodesToPhecodes <-
       output = output %>%
         select(-code) %>%
         rename(phecode=phecode_unrolled)
-      #Make distinct
+      ### Make distinct
       if( make.distinct ) {
         output <- distinct(output)
-      }
-    } else {
-      #Rename output column to phecode
+        }
+      } else {
+      ### Rename output column to phecode
       output <- output %>%
         rename(phecode=code)
-    }
-    #Return the output
+      }
+  
+  ## Return the output ----
     output
   }
