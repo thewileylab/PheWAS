@@ -12,20 +12,27 @@
 #' @param id.sex A DBI tbl connection with the first column being the id and the second the gender, "M" or "F", of the 
 #' individual. Individuals with any other specification will have all gender specific phenotypes set to NA.
 #'
+#' @importFrom DBI collect
+#' @importFrom dplyr case_when distinct filter left_join mutate rename select
+#' 
 #' @return The \code{phenotypes} tbl connection with NA values for individuals that do not match the gender for 
 #' gender-specific codes.
 #' @export
 #'
 #' @examples
 
-dbi_restrictPhecodesBySex <- function(phenotypes,id.sex) {
-  # data=merge(phenotypes,id.sex,by=1,all.x=T)
+dbi_restrictPhecodesBySex <- function(phenotypes,
+                                      id.sex) 
+  {
+  ## Add gender information to data ---- 
   data <- phenotypes %>%
     left_join(id.sex)
-  #Get the column of the sex
+  
+  ## Identify column containing gender ----
   # g=dim(data)[2]
   # g=length( colnames(test) )
-  #Get the restrictions found in the phenotypes data frame
+  
+  ## Identify gender restrictions found in the phenotype data ----
   # current_gender_restriction=PheWAS::gender_restriction[PheWAS::gender_restriction$phecode %in% colnames(phenotypes)[-1],]
   # current_phens <- tibble(new_phe = colnames(phenotypes)[-1]) %>%
   #   mutate(phecode = str_replace(new_phe, 'code_', ''),
@@ -38,7 +45,8 @@ dbi_restrictPhecodesBySex <- function(phenotypes,id.sex) {
   current_gender_restriction <- PheWAS::gender_restriction %>%
     left_join(current_phens) %>%
     filter(phecode %in% current_phens$phecode)
-  #Get male and female-only phenotypes
+  
+  ## Get male and female-only phenotypes ----
   # male_only=current_gender_restriction[current_gender_restriction$male_only,"phecode"]
   male_only <- current_gender_restriction %>%
     filter(male_only == TRUE) %>%
@@ -47,7 +55,8 @@ dbi_restrictPhecodesBySex <- function(phenotypes,id.sex) {
   female_only <- current_gender_restriction %>%
     filter(female_only == TRUE) %>%
     select(phecode)
-  #Set row column matches to NA where inds of a gender meet restricted phenotypes
+  
+  ## Set row column matches to NA where ids of a gender meet restricted phenotypes ----
   # data[!is.na(data[,g])&data[,g]!="F",female_only]=NA
   # data[!is.na(data[,g])&data[,g]!="M",male_only]=NA
   
@@ -63,7 +72,7 @@ dbi_restrictPhecodesBySex <- function(phenotypes,id.sex) {
                                    TRUE ~ count)
     )
   
-  #Return everything, sans sex
+  ## Return everything, sans gender column ----
   # data[,-g]
   data <- data %>% select(-sex, -count)
   data
