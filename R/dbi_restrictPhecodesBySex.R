@@ -12,8 +12,7 @@
 #' @param id.sex A DBI tbl connection with the first column being the id and the second the gender, "M" or "F", of the 
 #' individual. Individuals with any other specification will have all gender specific phenotypes set to NA.
 #'
-#' @importFrom DBI collect
-#' @importFrom dplyr case_when distinct filter left_join mutate rename select
+#' @importFrom dplyr case_when collect distinct filter left_join mutate rename select
 #' 
 #' @return The \code{phenotypes} tbl connection with NA values for individuals that do not match the gender for 
 #' gender-specific codes.

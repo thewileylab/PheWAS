@@ -24,8 +24,7 @@
 #' @param make.distinct Boolean value. Should duplicate rows be removed during mapping? Default is \code{TRUE}. 
 #' Useful to reduce data size, especially when another column, eg date of code, is provided.
 #' 
-#' @importFrom dbi collect
-#' @importFrom dplyr case_when count distinct filter inner_join pull rename select
+#' @importFrom dplyr case_when collect count distinct filter inner_join pull rename select
 #' @importFrom magrittr %>% extract2
 #' @importFrom rlang abort format_error_bullets warn
 #'
