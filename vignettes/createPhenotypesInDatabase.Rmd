@@ -1,0 +1,61 @@
+---
+title: "createPhenotypes In Database"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{createPhenotypes In Database}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+```{r setup}
+library(DBI)
+library(RSQLite)
+library(PheWAS)
+```
+
+## Overview
+
+## Upload PheWAS Package Datasets to Target Database
+```{r}
+con <- dbConnect(RSQLite::SQLite(), ":memory:")
+dbWriteTable(con, 'phecode_map', PheWAS::phecode_map)
+dbWriteTable(con, 'phecode_rollup_map', PheWAS::phecode_rollup_map)
+dbWriteTable(con, 'phecode_exclude', PheWAS::phecode_exclude)
+```
+
+
+```{r}
+phecode_map <- tbl(con, 'phecode_map')
+phecode_map
+```
+
+## Create Tidy Phenotypes
+
+```{r, eval=FALSE}
+## Define tbl connections to patient data
+icd_summary <- tbl(con, 'patient_data')
+id_sex <- tbl(con, 'patient_gener_info')
+
+## Define tbl connections to PheWAS package Datasets
+phecode_map <- tbl(con, 'phecode_map')
+phecode_rollup_map <- tbl(con, 'phecode_rollup_map')
+phecode_exclude <- tbl(con, 'phecode_exclude')
+
+## Create Phenotypes in Database
+phenotype_table <- createTidyPhenotypes(id.vocab.code.index = icd_summary, 
+                                        min.code.count = 2, 
+                                        add.phecode.exclusions = T, 
+                                        id.sex = id_sex, 
+                                        vocabulary.map = phecode_map, 
+                                        rollup.map = phecode_rollup_map, 
+                                        exclusion.map = phecode_exclude
+                                        )
+```
+
