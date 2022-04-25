@@ -24,12 +24,14 @@ library(PheWAS)
 
 ## Upload PheWAS Package Datasets to Target Database
 ```{r}
+## Create DBI connection object to target database
 con <- dbConnect(RSQLite::SQLite(), ":memory:")
+
+## Upload PheWAS package data
 dbWriteTable(con, 'phecode_map', PheWAS::phecode_map)
 dbWriteTable(con, 'phecode_rollup_map', PheWAS::phecode_rollup_map)
 dbWriteTable(con, 'phecode_exclude', PheWAS::phecode_exclude)
 ```
-
 
 ```{r}
 phecode_map <- tbl(con, 'phecode_map')
@@ -40,7 +42,7 @@ phecode_map
 
 ```{r, eval=FALSE}
 ## Define tbl connections to patient data
-icd_summary <- tbl(con, 'patient_data')
+icd_summary <- tbl(con, 'summarized_patient_diagnoses_info')
 id_sex <- tbl(con, 'patient_gener_info')
 
 ## Define tbl connections to PheWAS package Datasets
