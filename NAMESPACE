@@ -9,6 +9,7 @@ importFrom(MASS,mvrnorm)
 importFrom(meta,metagen)
 importFrom(ggrepel,geom_text_repel)
 importFrom(DT,datatable)
+importFrom(magrittr,"%>%" )
 importFrom(survival,clogit,strata,coxph,Surv)
 importFrom(logistf,logistf)
 importFrom(lmtest,lrtest)
@@ -16,4 +17,4 @@ importFrom("stats", "aggregate", "as.formula", "binomial",
              "chisq.test", "confint", "contrasts", "contrasts<-", "cor",
              "glm", "lm", "model.matrix", "na.omit", "p.adjust",
              "pchisq", "qnorm", "rpois", "t.test", "terms")
-importFrom("utils", "write.table")
+importFrom("utils", "head", "write.table")
