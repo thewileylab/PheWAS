@@ -22,11 +22,14 @@ library(PheWAS)
 
 ## Overview
 
-## Upload PheWAS Package Datasets to Target Database
+## Connect to Patient Database
 ```{r}
 ## Create DBI connection object to target database
 con <- dbConnect(RSQLite::SQLite(), ":memory:")
+```
 
+## Upload PheWAS Package Datasets to Target Database
+```{r}
 ## Upload PheWAS package data
 dbWriteTable(con, 'phecode_map', PheWAS::phecode_map)
 dbWriteTable(con, 'phecode_rollup_map', PheWAS::phecode_rollup_map)
@@ -46,18 +49,18 @@ icd_summary <- tbl(con, 'summarized_patient_diagnoses_info')
 id_sex <- tbl(con, 'patient_gener_info')
 
 ## Define tbl connections to PheWAS package Datasets
-phecode_map <- tbl(con, 'phecode_map')
-phecode_rollup_map <- tbl(con, 'phecode_rollup_map')
-phecode_exclude <- tbl(con, 'phecode_exclude')
+db_phecode_map <- tbl(con, 'phecode_map')
+db_phecode_rollup_map <- tbl(con, 'phecode_rollup_map')
+db_phecode_exclude <- tbl(con, 'phecode_exclude')
 
 ## Create Phenotypes in Database
-phenotype_table <- createTidyPhenotypes(id.vocab.code.index = icd_summary, 
+phenotype_table <- createTidyPhenotypes(id.vocab.code.index = db_icd_summary, 
                                         min.code.count = 2, 
                                         add.phecode.exclusions = T, 
-                                        id.sex = id_sex, 
-                                        vocabulary.map = phecode_map, 
-                                        rollup.map = phecode_rollup_map, 
-                                        exclusion.map = phecode_exclude
+                                        id.sex = db_id_sex, 
+                                        vocabulary.map = db_phecode_map, 
+                                        rollup.map = db_phecode_rollup_map, 
+                                        exclusion.map = db_phecode_exclude
                                         )
 ```
 
