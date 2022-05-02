@@ -22,20 +22,22 @@ library(PheWAS)
 
 ## Overview
 
-## Connect to Patient Database
+## Connect to Database
 ```{r}
 ## Create DBI connection object to target database
 con <- dbConnect(RSQLite::SQLite(), ":memory:")
 ```
 
-## Create Example Diagnoses
+## Create Example Patient Database
+
+### Diagnoses Table
 
 ```{r}
 diagnoses_table <- tibble::tibble(id = c(1,1,1,2), vacabulary_id = c('ICD9CM'), code = c('410', '410.1', '414.0', '250.02'), count =c(2,1,6,13))
 dbWriteTable(con, 'diagnoses', diagnoses_table)
 ```
 
-## Create Example Demographics
+## Demographics Table
 
 ```{r}
 demographics_table <- tibble::tibble(id = c(1,2), sex = c('M', 'F')) 
@@ -55,7 +57,7 @@ phecode_map <- tbl(con, 'phecode_map')
 phecode_map
 ```
 
-## Create Tidy Phenotypes
+## Create Phenotypes in Database
 
 ```{r}
 ## Define tbl connections to patient data
@@ -77,5 +79,14 @@ phenotype_table <- dbi_createPhenotypes(id.vocab.code.index = db_icd_summary,
                                         rollup.map = db_phecode_rollup_map, 
                                         exclusion.map = db_phecode_exclude
                                         )
+```
+
+## Doanload Phenotypes
+
+```{r}
+local_phenotype_table <- phenotype_table %>% 
+  dplyr::collect()
+local_phenotype_table %>% 
+  tidyr::pivot_wider(names_from = code, values_from = case_status)
 ```
 
