@@ -1,7 +1,8 @@
 #' db_createPhenotypes
 #' 
 #' @details 
-#' Creates a phenotype table from id, ICD9CM, ICD10CM (or phecode, etc), data.
+#' A database optimized version of (\code{\link[PheWAS:createPhenotypes]{PheWAS::createPhenotypes}}). Creates a phenotype table 
+#' from id, ICD9CM, ICD10CM (or phecode, etc), data.
 #' 
 #' By default, this function returns a long format data frame with boolean phenotypes suitable for PheWAS analysis. Specifying 
 #' a \code{min.code.count=NA} will permit continuous code count phenotypes.
@@ -181,6 +182,7 @@ db_createPhenotypes <- function(id.vocab.code.index,
   
   ## Gender Restrictions ----
   ### If there are sex restrictions, set them to NA
+  inform(format_error_bullets(c('i' = 'Mapping gender restrictions...')) )
   if( !missing(id.sex) ) {
     phens <- db_restrictPhecodesBySex(phens,id.sex)
   }
@@ -195,5 +197,6 @@ db_createPhenotypes <- function(id.vocab.code.index,
     rename(!!id.name := 1)
   
   ## Return the output ----  
+  inform(format_error_bullets(c('v' = 'Complete!')) )
   phens
 }

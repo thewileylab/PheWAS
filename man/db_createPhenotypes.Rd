@@ -54,7 +54,8 @@ This function takes a data frame with four columns: id, vocabulary_id, code, and
 TRUE/FALSE/NA. It can optionally use the PheWAS exclusion criteria.
 }
 \details{
-Creates a phenotype table from id, ICD9CM, ICD10CM (or phecode, etc), data.
+A database optimized version of (\code{\link[PheWAS:createPhenotypes]{PheWAS::createPhenotypes}}). Creates a phenotype table 
+from id, ICD9CM, ICD10CM (or phecode, etc), data.
 
 By default, this function returns a long format data frame with boolean phenotypes suitable for PheWAS analysis. Specifying 
 a \code{min.code.count=NA} will permit continuous code count phenotypes.
