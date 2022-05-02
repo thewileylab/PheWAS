@@ -1,8 +1,8 @@
 ---
-title: "createPhenotypes In Database"
+title: "Create Phenotypes In Database"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{createPhenotypes In Database}
+  %\VignetteIndexEntry{Create Phenotypes In Database}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -24,14 +24,20 @@ library(tidyr)
 
 ## Overview
 
+## Generate Example Data
+
+```{r}
+set.seed(2020)
+example_data <- PheWAS::generateExample(n = 50)
+```
+
 ## Create Example Database
+
+To illustrate the utility of `PheWAS::db_createPhenotypes()`, data are generated using `PheWAS::generateExample()` and uploaded to an in memory SQLite database created with the RSQLite package. 
+
 ```{r}
 ## Create DBI connection object to target database
 con <- dbConnect(RSQLite::SQLite(), ":memory:")
-
-## Generate Example Data
-set.seed(2020)
-example_data <- PheWAS::generateExample(n = 50)
 
 ## Create Example Database
 dbWriteTable(con, 'id.vocab.code.count', example_data$id.vocab.code.count)
@@ -39,6 +45,13 @@ dbWriteTable(con, 'id.sex', example_data$id.sex)
 ```
 
 ## Upload PheWAS Package Datasets to Target Database
+
+In order to generate phenotypes using db_createPhenotypes(), the following PheWAS package datasets need to be uploaded to the target database:
+
+* PheWAS::phecode_map
+* PheWAS::phecode_rollup_map
+* PheWAS::phecode_exclude
+
 ```{r}
 ## Upload PheWAS package data
 dbWriteTable(con, 'phecode_map', PheWAS::phecode_map)
@@ -46,12 +59,9 @@ dbWriteTable(con, 'phecode_rollup_map', PheWAS::phecode_rollup_map)
 dbWriteTable(con, 'phecode_exclude', PheWAS::phecode_exclude)
 ```
 
-```{r}
-phecode_map <- tbl(con, 'phecode_map')
-phecode_map
-```
-
 ## Create Phenotypes in Database
+
+Create `tbl()` connections to the source data in our example database.
 
 ```{r}
 ## Define tbl connections to example data
@@ -62,9 +72,12 @@ db_id_sex <- tbl(con, 'id.sex')
 db_phecode_map <- tbl(con, 'phecode_map')
 db_phecode_rollup_map <- tbl(con, 'phecode_rollup_map')
 db_phecode_exclude <- tbl(con, 'phecode_exclude')
+```
 
+Supply `tbl()` source connections as arguments to the `db_createPhenotypes()` function.
+
+```{r}
 ## Create Phenotypes in Database
-load_all()
 phenotype_table <- db_createPhenotypes(id.vocab.code.index = db_icd_summary, 
                                        min.code.count = 2, 
                                        add.phecode.exclusions = T, 
@@ -77,10 +90,17 @@ phenotype_table <- db_createPhenotypes(id.vocab.code.index = db_icd_summary,
 
 ## Download Phenotypes
 
+The output of `db_createPhenotypes()` will be a `tbl()` source connection. To download the phemapped data to the R environment, run the following:
+
 ```{r}
 local_phenotype_table <- phenotype_table %>% 
   collect()
-local_phenotype_table %>% 
+```
+
+Finally, transform the data from long to wide format for use with the rest of the PheWAS package:
+```{r}
+local_phenotype_table_wide <- local_phenotype_table %>% 
   pivot_wider(names_from = code, values_from = case_status)
+local_phenotype_table_wide
 ```
 
