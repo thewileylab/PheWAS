@@ -1,4 +1,4 @@
-#' dbi_restrictPhecodesBySex
+#' db_restrictPhecodesBySex
 #' 
 #' @details 
 #' Add PheWAS code descriptions to existing data.
@@ -13,6 +13,7 @@
 #' individual. Individuals with any other specification will have all gender specific phenotypes set to NA.
 #'
 #' @importFrom dplyr case_when collect distinct filter left_join mutate rename select
+#' @importFrom rlang .data
 #' 
 #' @return The \code{phenotypes} tbl connection with NA values for individuals that do not match the gender for 
 #' gender-specific codes.
@@ -20,7 +21,7 @@
 #'
 #' @examples
 
-dbi_restrictPhecodesBySex <- function(phenotypes,
+db_restrictPhecodesBySex <- function(phenotypes,
                                       id.sex) 
   {
   ## Add gender information to data ---- 
@@ -38,22 +39,22 @@ dbi_restrictPhecodesBySex <- function(phenotypes,
   #          phecode = str_replace(phecode, '_', '\\.')
   #          )
   current_phens <- phenotypes %>%
-    distinct(code) %>%
-    rename(phecode = code) %>%
+    distinct(.data$code) %>%
+    rename(phecode = .data$code) %>%
     collect()
   current_gender_restriction <- PheWAS::gender_restriction %>%
     left_join(current_phens) %>%
-    filter(phecode %in% current_phens$phecode)
+    filter(.data$phecode %in% current_phens$phecode)
   
   ## Get male and female-only phenotypes ----
   # male_only=current_gender_restriction[current_gender_restriction$male_only,"phecode"]
   male_only <- current_gender_restriction %>%
-    filter(male_only == TRUE) %>%
-    select(phecode)
+    filter(.data$male_only == TRUE) %>%
+    select(.data$phecode)
   # female_only=current_gender_restriction[current_gender_restriction$female_only,"phecode"]
   female_only <- current_gender_restriction %>%
-    filter(female_only == TRUE) %>%
-    select(phecode)
+    filter(.data$female_only == TRUE) %>%
+    select(.data$phecode)
   
   ## Set row column matches to NA where ids of a gender meet restricted phenotypes ----
   # data[!is.na(data[,g])&data[,g]!="F",female_only]=NA
@@ -66,13 +67,13 @@ dbi_restrictPhecodesBySex <- function(phenotypes,
   #                                                           TRUE ~ .x))
   #          )
   data <- data %>%
-    mutate(case_status = case_when(code %in% !!female_only$phecode & sex != 'F' ~ NA,
-                                   code %in% !!male_only$phecode & sex != 'M' ~ NA,
-                                   TRUE ~ count)
+    mutate(case_status = case_when(.data$code %in% !!female_only$phecode & sex != 'F' ~ NA,
+                                   .data$code %in% !!male_only$phecode & sex != 'M' ~ NA,
+                                   TRUE ~ .data$count)
     )
   
   ## Return everything, sans gender column ----
   # data[,-g]
-  data <- data %>% select(-sex, -count)
+  data <- data %>% select(-.data$sex, -.data$count)
   data
 }

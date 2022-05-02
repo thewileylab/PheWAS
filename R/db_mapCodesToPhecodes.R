@@ -1,4 +1,4 @@
-#' dbi_mapCodesToPhecodes
+#' db_mapCodesToPhecodes
 #' 
 #' @details 
 #' Map codes to phecodes
@@ -34,7 +34,7 @@
 #'
 #' @examples
 
-dbi_mapCodesToPhecodes <-
+db_mapCodesToPhecodes <-
   function(input,
            vocabulary.map=PheWAS::phecode_map,
            rollup.map=PheWAS::phecode_rollup_map,
@@ -57,16 +57,16 @@ dbi_mapCodesToPhecodes <-
                         warning = function(w) { if (grepl("coercing into character vector", w$message)) {invokeRestart("muffleWarning")}})
     ### Remove old columns
     output <- output %>%
-      select(-code,-vocabulary_id) %>%
-      rename(code=phecode)
+      select(-.data$code,-.data$vocabulary_id) %>%
+      rename(code=.data$phecode)
     } else {
       ### Warn if the vocabulary IDs are not phecodes
       if( input %>% mutate(is_phecode = case_when(vocabulary_id == 'phecode' ~ 1, TRUE ~ 0)) %>% count(is_phecode) %>% pull(n) %>% sum() !=0 ) {
         warn(format_error_bullets(c('!' = "Phecode mapping was not requested, but the vocabulary_id of all codes is not 'phecode'"))) }
       ### Prepare for just the phecode expansion
       output <- input %>%
-        filter(vocabulary_id=="phecode") %>%
-        select(-vocabulary_id)
+        filter(.data$vocabulary_id=="phecode") %>%
+        select(-.data$vocabulary_id)
       }
     
   ## Make distinct ----
@@ -80,8 +80,8 @@ dbi_mapCodesToPhecodes <-
                             inner_join(rollup.map,by="code"),
                           warning = function(w) { if (grepl("coercing into character vector", w$message)) {invokeRestart("muffleWarning")}})
       output = output %>%
-        select(-code) %>%
-        rename(phecode=phecode_unrolled)
+        select(-.data$code) %>%
+        rename(phecode=.data$phecode_unrolled)
       ### Make distinct
       if( make.distinct ) {
         output <- distinct(output)
@@ -89,7 +89,7 @@ dbi_mapCodesToPhecodes <-
       } else {
       ### Rename output column to phecode
       output <- output %>%
-        rename(phecode=code)
+        rename(phecode=.data$code)
       }
   
   ## Return the output ----

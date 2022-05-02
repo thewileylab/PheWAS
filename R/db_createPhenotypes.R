@@ -1,4 +1,4 @@
-#' dbi_createPhenotypes
+#' db_createPhenotypes
 #' 
 #' @details 
 #' Creates a phenotype table from id, ICD9CM, ICD10CM (or phecode, etc), data.
@@ -45,7 +45,7 @@
 #'
 #' @examples
 
-dbi_createPhenotypes <- function(id.vocab.code.index, 
+db_createPhenotypes <- function(id.vocab.code.index, 
                                  min.code.count=2, 
                                  add.phecode.exclusions=T, 
                                  translate=T, 
@@ -61,7 +61,7 @@ dbi_createPhenotypes <- function(id.vocab.code.index,
     id.name=colnames(id.vocab.code.index)[1]
   
   ### Warn if id.sex is not provided ----
-    if( missing(id.sex) ) { warn(format_error_bullets(c('!'="It is recommended to provide id.sex information to help address spurious sex-specific associations.")) ) }
+    if( missing(id.sex) ) { warn(format_error_bullets(c(' '='','!'="It is recommended to provide id.sex information to help address spurious sex-specific associations.")) ) }
   
   ## Translate to Phecode ----  
     if( !translate ) {
@@ -87,7 +87,7 @@ dbi_createPhenotypes <- function(id.vocab.code.index,
                  'index' = id.vocab.code.index_cols[[4]]
                  )
         inform(format_error_bullets(c('i' = "Mapping codes to phecodes...")) )
-        phemapped <- dbi_mapCodesToPhecodes(input = id.vocab.code.index, vocabulary.map=vocabulary.map, rollup.map=rollup.map) %>%
+        phemapped <- db_mapCodesToPhecodes(input = id.vocab.code.index, vocabulary.map=vocabulary.map, rollup.map=rollup.map) %>%
           transmute(.data$id, code=.data$phecode, .data$index)
         }
     
@@ -115,22 +115,25 @@ dbi_createPhenotypes <- function(id.vocab.code.index,
       exclusions <- exclusions %>%
         transmute(id, code, count = -1) %>%
         distinct()
-      phecode <- union_all(phecode, exclusions)
+      phecode <- union_all(phecode, exclusions)%>% 
+        dplyr::compute()
       }
     
     ### If there is request for a min code count, adjust counts to -1 if needed
     if(!is.na(min.code.count)) {
       phecode <- phecode %>%
-        mutate(count = case_when(!is.na(.data$count) & .data$count < .data$min.code.count ~ -1,
+        mutate(count = case_when(!is.na(.data$count) & .data$count < min.code.count ~ -1,
                                  TRUE ~ .data$count)
-               )
+               )%>% 
+        dplyr::compute()
       }
     
     if( !is.na(min.code.count) | add.phecode.exclusions ) {
       inform(format_error_bullets(c('i' = "Coalescing exclusions and min.code.count as applicable...")) )
       phecode <- phecode %>%
         group_by(.data$id, .data$code) %>%
-        summarise(count = max(.data$count, na.rm = T), .groups = 'drop') ##???????????
+        summarise(count = max(.data$count, na.rm = T), .groups = 'drop') %>% ##???????????
+        dplyr::compute()
       }
     
   ## Add Population Controls ----  
@@ -179,7 +182,7 @@ dbi_createPhenotypes <- function(id.vocab.code.index,
   ## Gender Restrictions ----
     ### If there are sex restrictions, set them to NA
     if( !missing(id.sex) ) {
-      phens <- dbi_restrictPhecodesBySex(phens,id.sex)
+      phens <- db_restrictPhecodesBySex(phens,id.sex)
       }
     
   ## Limit to full population ids ----
