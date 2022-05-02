@@ -46,154 +46,154 @@
 #' @examples
 
 db_createPhenotypes <- function(id.vocab.code.index, 
-                                 min.code.count=2, 
-                                 add.phecode.exclusions=T, 
-                                 translate=T, 
-                                 id.sex,
-                                 full.population.ids=id.vocab.code.index %>% distinct(!!as.name(colnames(id.vocab.code.index)[1])),
-                                 vocabulary.map=PheWAS::phecode_map,
-                                 rollup.map=PheWAS::phecode_rollup_map,
-                                 exclusion.map=PheWAS::phecode_exclude
-                                 )
-  {
+                                min.code.count=2, 
+                                add.phecode.exclusions=T, 
+                                translate=T, 
+                                id.sex,
+                                full.population.ids=id.vocab.code.index %>% distinct(!!as.name(colnames(id.vocab.code.index)[1])),
+                                vocabulary.map=PheWAS::phecode_map,
+                                rollup.map=PheWAS::phecode_rollup_map,
+                                exclusion.map=PheWAS::phecode_exclude
+)
+{
   ## Setup ----
   ### Obtain ID column name ----
-    id.name=colnames(id.vocab.code.index)[1]
+  id.name=colnames(id.vocab.code.index)[1]
   
   ### Warn if id.sex is not provided ----
-    if( missing(id.sex) ) { warn(format_error_bullets(c(' '='','!'="It is recommended to provide id.sex information to help address spurious sex-specific associations.")) ) }
+  if( missing(id.sex) ) { warn(format_error_bullets(c(' '='','!'="It is recommended to provide id.sex information to help address spurious sex-specific associations.")) ) }
   
   ## Translate to Phecode ----  
-    if( !translate ) {
-      ### Warn about exclusions if input is not translated and not phecodes. 
-      if(add.phecode.exclusions & id.vocab.code.index %>% count(.data$code) %>% pull(.data$n) %>% sum() !=  id.vocab.code.index %>% count() %>% pull(n)) {
-        abort("Codes are not translated and vocab is not 'phecode' for every row, but exclusions are to be applied. Ensure that the code column has only phecodes or disable add.phecode.exclusions for accurate results.")
-        }
-      ### Warn about exclusions if input is not translated and not phecodes.
-      if( !missing(id.sex)  & id.vocab.code.index %>% count(.data$code) %>% pull(.data$n) %>% sum() !=  id.vocab.code.index %>% count() %>% pull(.data$n)) {
-        abort("Codes are not translated and vocab is not 'phecode' for every row, but id.sex is supplied for sex-based exclusions. Ensure that the code column has only phecodes or omit id.sex for accurate results.")
-        }
-      phemapped=id.vocab.code.index
-      } else {
-        ### check to make sure numeric codes were not passed in
-        if( !id.vocab.code.index %>% head() %>% collect() %>% lapply(type_sum) %>% magrittr::extract2(3) %in% c("chr","fct") ) {
-          abort("Please ensure character or factor code representation. Some vocabularies, eg ICD9CM, require strings to be represented accurately: E.G.: 250, 250.0, and 250.00 are different codes and necessitate string representation")
-          }
-        id.vocab.code.index_cols <- colnames(id.vocab.code.index)
-        id.vocab.code.index <- id.vocab.code.index %>%
-          rename('id' = id.vocab.code.index_cols[[1]], 
-                 'vocabulary_id' = id.vocab.code.index_cols[[2]], 
-                 'code' = id.vocab.code.index_cols[[3]], 
-                 'index' = id.vocab.code.index_cols[[4]]
-                 )
-        inform(format_error_bullets(c('i' = "Mapping codes to phecodes...")) )
-        phemapped <- db_mapCodesToPhecodes(input = id.vocab.code.index, vocabulary.map=vocabulary.map, rollup.map=rollup.map) %>%
-          transmute(.data$id, code=.data$phecode, .data$index)
-        }
-    
+  if( !translate ) {
+    ### Warn about exclusions if input is not translated and not phecodes. 
+    if(add.phecode.exclusions & id.vocab.code.index %>% count(.data$code) %>% pull(.data$n) %>% sum() !=  id.vocab.code.index %>% count() %>% pull(n)) {
+      abort("Codes are not translated and vocab is not 'phecode' for every row, but exclusions are to be applied. Ensure that the code column has only phecodes or disable add.phecode.exclusions for accurate results.")
+    }
+    ### Warn about exclusions if input is not translated and not phecodes.
+    if( !missing(id.sex)  & id.vocab.code.index %>% count(.data$code) %>% pull(.data$n) %>% sum() !=  id.vocab.code.index %>% count() %>% pull(.data$n)) {
+      abort("Codes are not translated and vocab is not 'phecode' for every row, but id.sex is supplied for sex-based exclusions. Ensure that the code column has only phecodes or omit id.sex for accurate results.")
+    }
+    phemapped=id.vocab.code.index
+  } else {
+    ### check to make sure numeric codes were not passed in
+    if( !id.vocab.code.index %>% head() %>% collect() %>% lapply(type_sum) %>% magrittr::extract2(3) %in% c("chr","fct") ) {
+      abort("Please ensure character or factor code representation. Some vocabularies, eg ICD9CM, require strings to be represented accurately: E.G.: 250, 250.0, and 250.00 are different codes and necessitate string representation")
+    }
+    id.vocab.code.index_cols <- colnames(id.vocab.code.index)
+    id.vocab.code.index <- id.vocab.code.index %>%
+      rename('id' = id.vocab.code.index_cols[[1]], 
+             'vocabulary_id' = id.vocab.code.index_cols[[2]], 
+             'code' = id.vocab.code.index_cols[[3]], 
+             'index' = id.vocab.code.index_cols[[4]]
+      )
+    inform(format_error_bullets(c('i' = "Mapping codes to phecodes...")) )
+    phemapped <- db_mapCodesToPhecodes(input = id.vocab.code.index, vocabulary.map=vocabulary.map, rollup.map=rollup.map) %>%
+      transmute(.data$id, code=.data$phecode, .data$index)
+  }
+  
   ## Aggregate Codes ----  
-    inform(format_error_bullets(c('i' = "Aggregating codes...")) )
-    if( is.numeric(phemapped %>% head() %>% collect() %>% pull(.data$index)) ) {
-      phecode <- phemapped %>%
-        group_by(.data$id,.data$code) %>%
-        summarise(count = sum(.data$index, na.rm = T), .groups = 'drop')
-      } else {
-        phecode <- phemapped %>%
-          group_by(.data$id,.data$code) %>%
-          summarise(count = length(distinct(.data$index)), .groups = 'drop' )
-        }
-    phecode <- phecode %>%
-      filter(.data$count > 0)
+  inform(format_error_bullets(c('i' = "Aggregating codes...")) )
+  if( is.numeric(phemapped %>% head() %>% collect() %>% pull(.data$index)) ) {
+    phecode <- phemapped %>%
+      group_by(.data$id,.data$code) %>%
+      summarise(count = sum(.data$index, na.rm = T), .groups = 'drop')
+  } else {
+    phecode <- phemapped %>%
+      group_by(.data$id,.data$code) %>%
+      summarise(count = length(distinct(.data$index)), .groups = 'drop' )
+  }
+  phecode <- phecode %>%
+    filter(.data$count > 0)
   
   ## Map Exclusions ----
-    ### Check exclusions, and add them to the list
-    if( add.phecode.exclusions ) {
-      inform(format_error_bullets(c('i'= "Mapping exclusions...")) )
-      exclusions <- phecode %>%
-        rename(exclusion_criteria=.data$code) %>%
-        inner_join(exclusion.map, by = "exclusion_criteria")
-      exclusions <- exclusions %>%
-        transmute(id, code, count = -1) %>%
-        distinct()
-      phecode <- union_all(phecode, exclusions)%>% 
-        dplyr::compute()
-      }
-    
-    ### If there is request for a min code count, adjust counts to -1 if needed
-    if(!is.na(min.code.count)) {
-      phecode <- phecode %>%
-        mutate(count = case_when(!is.na(.data$count) & .data$count < min.code.count ~ -1,
-                                 TRUE ~ .data$count)
-               )%>% 
-        dplyr::compute()
-      }
-    
-    if( !is.na(min.code.count) | add.phecode.exclusions ) {
-      inform(format_error_bullets(c('i' = "Coalescing exclusions and min.code.count as applicable...")) )
-      phecode <- phecode %>%
-        group_by(.data$id, .data$code) %>%
-        summarise(count = max(.data$count, na.rm = T), .groups = 'drop') %>% ##???????????
-        dplyr::compute()
-      }
-    
+  ### Check exclusions, and add them to the list
+  if( add.phecode.exclusions ) {
+    inform(format_error_bullets(c('i'= "Mapping exclusions...")) )
+    exclusions <- phecode %>%
+      rename(exclusion_criteria=.data$code) %>%
+      inner_join(exclusion.map, by = "exclusion_criteria")
+    exclusions <- exclusions %>%
+      transmute(id, code, count = -1) %>%
+      distinct()
+    phecode <- union_all(phecode, exclusions)%>% 
+      dplyr::compute()
+  }
+  
+  ### If there is request for a min code count, adjust counts to -1 if needed
+  if(!is.na(min.code.count)) {
+    phecode <- phecode %>%
+      mutate(count = case_when(!is.na(.data$count) & .data$count < min.code.count ~ -1,
+                               TRUE ~ .data$count)
+      )%>% 
+      dplyr::compute()
+  }
+  
+  if( !is.na(min.code.count) | add.phecode.exclusions ) {
+    inform(format_error_bullets(c('i' = "Coalescing exclusions and min.code.count as applicable...")) )
+    phecode <- phecode %>%
+      group_by(.data$id, .data$code) %>%
+      summarise(count = max(.data$count, na.rm = T), .groups = 'drop') %>% ##???????????
+      dplyr::compute()
+  }
+  
   ## Add Population Controls ----  
   # rlang::inform(rlang::format_error_bullets(c('i' = glue::glue('Long data is {crayon::red("l")}{crayon::green("o")}{crayon::yellow("o")}{crayon::blue("o")}{crayon::magenta("o")}{crayon::cyan("o")}{crayon::white("o")}{crayon::silver("o")}{crayon::red("o")}{crayon::green("o")}{crayon::yellow("o")}{crayon::blue("o")}{crayon::magenta("o")}{crayon::cyan("o")}{crayon::white("n")}{crayon::silver("g")}...!'))))
-    inform(format_error_bullets(c('i' = 'Add population controls...')) )
-    distinct_phe_population_ids <- phecode %>%
-      distinct(.data$id)
-    distinct_phe_population <- phecode %>%
-      distinct(.data$code)
-    control_setup <- distinct_phe_population_ids %>%
+  inform(format_error_bullets(c('i' = 'Add population controls...')) )
+  distinct_phe_population_ids <- phecode %>%
+    distinct(.data$id)
+  distinct_phe_population <- phecode %>%
+    distinct(.data$code)
+  control_setup <- distinct_phe_population_ids %>%
+    full_join(distinct_phe_population, by = character()) %>%
+    mutate(count_2 = NA)
+  phecode <- phecode %>%
+    full_join(control_setup, by = c("id", "code"))
+  
+  ### Set exclusions to NA, controls to 0, preserving IDs just in case one is -1 ----
+  phens <- phecode %>%
+    mutate(count = case_when(is.na(.data$count) ~ 0,
+                             .data$count == -1 ~ NA_real_,
+                             TRUE ~ .data$count
+    )
+    ) %>%
+    select(-.data$count_2)
+  
+  ### Add back in ids present in input or the full population list, but without mapped phecodes ----
+  missing_ids <- full.population.ids %>%
+    anti_join(phens %>% select("id"), by = "id" )
+  
+  if( count(missing_ids) %>% pull(.data$n) > 0 ) {
+    empty_records <- missing_ids %>%
       full_join(distinct_phe_population, by = character()) %>%
-      mutate(count_2 = NA)
-    phecode <- phecode %>%
-      full_join(control_setup)
-    
-    ### Set exclusions to NA, controls to 0, preserving IDs just in case one is -1 ----
-    phens <- phecode %>%
-      mutate(count = case_when(is.na(.data$count) ~ 0,
-                               .data$count == -1 ~ NA_real_,
-                               TRUE ~ .data$count
-                               )
-             ) %>%
-      select(-.data$count_2)
-    
-    ### Add back in ids present in input or the full population list, but without mapped phecodes ----
-    missing_ids <- full.population.ids %>%
-      anti_join(phens %>% select("id") )
-    
-    if( count(missing_ids) %>% pull(.data$n) > 0 ) {
-      empty_records <- missing_ids %>%
-        full_join(distinct_phe_population, by = character()) %>%
-        mutate(count = 0)
-      phens <- union_all(phens, empty_records)
-      }
-    
-    ### Change to logical if there is a min code count ----
-    if( !is.na(min.code.count) ) {
-      phens <- phens %>%
-        mutate(count = case_when(is.na(.data$count) ~ NA,
-                                 .data$count > 0 ~ TRUE,
-                                 TRUE ~ FALSE
-                                 )
-               )
-      }
+      mutate(count = 0)
+    phens <- union_all(phens, empty_records)
+  }
+  
+  ### Change to logical if there is a min code count ----
+  if( !is.na(min.code.count) ) {
+    phens <- phens %>%
+      mutate(count = case_when(is.na(.data$count) ~ NA,
+                               .data$count > 0 ~ TRUE,
+                               TRUE ~ FALSE
+      )
+      )
+  }
   
   ## Gender Restrictions ----
-    ### If there are sex restrictions, set them to NA
-    if( !missing(id.sex) ) {
-      phens <- db_restrictPhecodesBySex(phens,id.sex)
-      }
-    
+  ### If there are sex restrictions, set them to NA
+  if( !missing(id.sex) ) {
+    phens <- db_restrictPhecodesBySex(phens,id.sex)
+  }
+  
   ## Limit to full population ids ----
-    phens <- full.population.ids %>%
-      left_join(phens)
-    
+  phens <- full.population.ids %>%
+    left_join(phens, by = "id")
+  
   ## Rename the ID column ----
-    ### Use the original input ID column name 
-    phens <- phens %>%
-      rename(!!id.name := 1)
+  ### Use the original input ID column name 
+  phens <- phens %>%
+    rename(!!id.name := 1)
   
   ## Return the output ----  
-    phens
-    }
+  phens
+}

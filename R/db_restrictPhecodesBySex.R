@@ -26,7 +26,7 @@ db_restrictPhecodesBySex <- function(phenotypes,
   {
   ## Add gender information to data ---- 
   data <- phenotypes %>%
-    left_join(id.sex)
+    left_join(id.sex, by = "id")
   
   ## Identify column containing gender ----
   # g=dim(data)[2]
@@ -43,7 +43,7 @@ db_restrictPhecodesBySex <- function(phenotypes,
     rename(phecode = .data$code) %>%
     collect()
   current_gender_restriction <- PheWAS::gender_restriction %>%
-    left_join(current_phens) %>%
+    left_join(current_phens, by = "phecode") %>%
     filter(.data$phecode %in% current_phens$phecode)
   
   ## Get male and female-only phenotypes ----
