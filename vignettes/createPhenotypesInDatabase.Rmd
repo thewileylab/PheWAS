@@ -15,33 +15,27 @@ knitr::opts_chunk$set(
 ```
 
 ```{r setup}
-library(DBI)
-library(RSQLite)
 library(PheWAS)
+library(DBI)
+library(dplyr)
+library(RSQLite)
+library(tidyr)
 ```
 
 ## Overview
 
-## Connect to Database
+## Create Example Database
 ```{r}
 ## Create DBI connection object to target database
 con <- dbConnect(RSQLite::SQLite(), ":memory:")
-```
 
-## Create Example Patient Database
+## Generate Example Data
+set.seed(2020)
+example_data <- PheWAS::generateExample(n = 50)
 
-### Diagnoses Table
-
-```{r}
-diagnoses_table <- tibble::tibble(id = c(1,1,1,2), vacabulary_id = c('ICD9CM'), code = c('410', '410.1', '414.0', '250.02'), count =c(2,1,6,13))
-dbWriteTable(con, 'diagnoses', diagnoses_table)
-```
-
-## Demographics Table
-
-```{r}
-demographics_table <- tibble::tibble(id = c(1,2), sex = c('M', 'F')) 
-dbWriteTable(con, 'demographics', demographics_table)
+## Create Example Database
+dbWriteTable(con, 'id.vocab.code.count', example_data$id.vocab.code.count)
+dbWriteTable(con, 'id.sex', example_data$id.sex)
 ```
 
 ## Upload PheWAS Package Datasets to Target Database
@@ -60,9 +54,9 @@ phecode_map
 ## Create Phenotypes in Database
 
 ```{r}
-## Define tbl connections to patient data
-db_icd_summary <- tbl(con, 'diagnoses')
-db_id_sex <- tbl(con, 'demographics')
+## Define tbl connections to example data
+db_icd_summary <- tbl(con, 'id.vocab.code.count')
+db_id_sex <- tbl(con, 'id.sex')
 
 ## Define tbl connections to PheWAS package Datasets
 db_phecode_map <- tbl(con, 'phecode_map')
@@ -71,22 +65,22 @@ db_phecode_exclude <- tbl(con, 'phecode_exclude')
 
 ## Create Phenotypes in Database
 load_all()
-phenotype_table <- dbi_createPhenotypes(id.vocab.code.index = db_icd_summary, 
-                                        min.code.count = 2, 
-                                        add.phecode.exclusions = T, 
-                                        id.sex = db_id_sex, 
-                                        vocabulary.map = db_phecode_map, 
-                                        rollup.map = db_phecode_rollup_map, 
-                                        exclusion.map = db_phecode_exclude
-                                        )
+phenotype_table <- db_createPhenotypes(id.vocab.code.index = db_icd_summary, 
+                                       min.code.count = 2, 
+                                       add.phecode.exclusions = T, 
+                                       id.sex = db_id_sex,
+                                       vocabulary.map = db_phecode_map, 
+                                       rollup.map = db_phecode_rollup_map, 
+                                       exclusion.map = db_phecode_exclude
+                                       )
 ```
 
-## Doanload Phenotypes
+## Download Phenotypes
 
 ```{r}
 local_phenotype_table <- phenotype_table %>% 
-  dplyr::collect()
+  collect()
 local_phenotype_table %>% 
-  tidyr::pivot_wider(names_from = code, values_from = case_status)
+  pivot_wider(names_from = code, values_from = case_status)
 ```
 
