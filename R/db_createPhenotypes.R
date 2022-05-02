@@ -33,7 +33,7 @@
 #' @param rollup.map Map between phecodes and all codes that they expand to, eg parent codes. By default uses the PheWAS::phecode_rollup_map.
 #' @param exclusion.map Map between phecodes and their exclusions. By default uses the PheWAS::phecode_exclude.
 #'
-#' @importFrom dplyr collect count distinct group_by filter inner_join left_join pull rename select summarise transmute type_sum union_all
+#' @importFrom dplyr collect compute count distinct group_by filter inner_join left_join pull rename select summarise transmute type_sum union_all
 #' @importFrom magrittr %>% extract2
 #' @importFrom rlang .data abort format_error_bullets inform warn
 #' @importFrom utils head
