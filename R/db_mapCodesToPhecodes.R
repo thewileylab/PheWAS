@@ -61,7 +61,7 @@ db_mapCodesToPhecodes <-
       rename(code=.data$phecode)
     } else {
       ### Warn if the vocabulary IDs are not phecodes
-      if( input %>% mutate(is_phecode = case_when(vocabulary_id == 'phecode' ~ 1, TRUE ~ 0)) %>% count(is_phecode) %>% pull(n) %>% sum() !=0 ) {
+      if( input %>% mutate(is_phecode = case_when(vocabulary_id == 'phecode' ~ 1, TRUE ~ 0)) %>% count(.data$is_phecode) %>% pull(n) %>% sum() !=0 ) {
         warn(format_error_bullets(c('!' = "Phecode mapping was not requested, but the vocabulary_id of all codes is not 'phecode'"))) }
       ### Prepare for just the phecode expansion
       output <- input %>%
