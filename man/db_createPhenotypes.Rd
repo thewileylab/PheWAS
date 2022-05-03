@@ -104,7 +104,7 @@ phenotype_table <- db_createPhenotypes(id.vocab.code.index = db_icd_summary,
                                        vocabulary.map = db_phecode_map, 
                                        rollup.map = db_phecode_rollup_map, 
                                        exclusion.map = db_phecode_exclude
-)
+                                       )
 
 ## Download Phenotypes
 local_phenotype_table <- phenotype_table \%>\% 

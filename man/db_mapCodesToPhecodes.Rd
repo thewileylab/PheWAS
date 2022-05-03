@@ -35,7 +35,7 @@ A \code{tbl()} source connection containing the columns in \code{input}, except 
 columns have been replaced with \code{phecode} now containing the phecode as character.
 }
 \description{
-This function takes a data frame with codes and maps them to phecodes. It can support aribitrary maps of codes to
+This function takes a data frame with codes and maps them to phecodes. It can support arbitrary maps of codes to
 phecodes and phecode rollup maps. The included mappings are from ICD9CM and ICD10CM.
 }
 \details{
