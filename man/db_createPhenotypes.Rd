@@ -18,26 +18,26 @@ db_createPhenotypes(
 )
 }
 \arguments{
-\item{id.vocab.code.index}{Data frame with four columns of information: id, vocabulary_id, code, and index. The id and index 
-columns can have other names, but id must be consistent among input files. The vocabulary_id and code must match up with the 
+\item{id.vocab.code.index}{Data frame with four columns of information: id, vocabulary_id, code, and index. The id and index
+columns can have other names, but id must be consistent among input files. The vocabulary_id and code must match up with the
 vocabulary.map file. The default supports the vocabularies "ICD9CM" and "ICD10CM". Code contains the raw code value.}
 
 \item{min.code.count}{The minimum code count to be considered a case. NA results in a continuous output.}
 
 \item{add.phecode.exclusions}{Apply PheWAS exclusions to phecodes.}
 
-\item{translate}{Should the input be translated to phecodes? Defaults to TRUE. Generally recommended, though can be skipped 
+\item{translate}{Should the input be translated to phecodes? Defaults to TRUE. Generally recommended, though can be skipped
 if phecodes are provided.}
 
-\item{id.sex}{If supplied, restrict the phecodes by sex. This should be a data frame with the first column being the id and 
-the second the sex, "M" or "F", of the individual. Individuals with any other specification will have all sex specific phenotypes 
+\item{id.sex}{If supplied, restrict the phecodes by sex. This should be a data frame with the first column being the id and
+the second the sex, "M" or "F", of the individual. Individuals with any other specification will have all sex specific phenotypes
 set to NA.}
 
-\item{full.population.ids}{List of IDs in the "complete" population. This allows for individuals with no observed codes to have 
+\item{full.population.ids}{List of IDs in the "complete" population. This allows for individuals with no observed codes to have
 appropriate "control" status, eg 0s or FALSE in every field.}
 
-\item{vocabulary.map}{Map between supplied vocabularies and phecodes. Allows for custom phecode maps. By default uses 
-\code{\link[PheWAS:phecode_map]{PheWAS::phecode_map}}, which supports ICD9CM (v1.2) and ICD10CM (beta-2018). The package also 
+\item{vocabulary.map}{Map between supplied vocabularies and phecodes. Allows for custom phecode maps. By default uses
+\code{\link[PheWAS:phecode_map]{PheWAS::phecode_map}}, which supports ICD9CM (v1.2) and ICD10CM (beta-2018). The package also
 includes the ICD10 beta map (\code{\link[PheWAS:phecode_map_icd10]{PheWAS::phecode_map_icd10}}), which can be used in this parameter.}
 
 \item{rollup.map}{Map between phecodes and all codes that they expand to, eg parent codes. By default uses the PheWAS::phecode_rollup_map.}
@@ -45,22 +45,22 @@ includes the ICD10 beta map (\code{\link[PheWAS:phecode_map_icd10]{PheWAS::pheco
 \item{exclusion.map}{Map between phecodes and their exclusions. By default uses the PheWAS::phecode_exclude.}
 }
 \value{
-A DBI tbl connection. The first column contains the supplied id for each individual (preserving the name of the original column). 
-The following columns contain the phecode and case_status of all present phewas codes. They contain T/F/NA for case/control/exclude or 
+A DBI tbl connection. The first column contains the supplied id for each individual (preserving the name of the original column).
+The following columns contain the phecode and case_status of all present phewas codes. They contain T/F/NA for case/control/exclude or
 continuous/NA if min.code.count was NA.
 }
 \description{
-This function takes a data frame with four columns: id, vocabulary_id, code, and index. It returns a wide table with phecodes as 
+This function takes a data frame with four columns: id, vocabulary_id, code, and index. It returns a wide table with phecodes as
 TRUE/FALSE/NA. It can optionally use the PheWAS exclusion criteria.
 }
 \details{
-A database optimized version of (\code{\link[PheWAS:createPhenotypes]{PheWAS::createPhenotypes}}). Creates a phenotype table 
+A database optimized version of (\code{\link[PheWAS:createPhenotypes]{PheWAS::createPhenotypes}}). Creates a phenotype table
 from id, ICD9CM, ICD10CM (or phecode, etc), data.
 
-By default, this function returns a long format data frame with boolean phenotypes suitable for PheWAS analysis. Specifying 
+By default, this function returns a long format data frame with boolean phenotypes suitable for PheWAS analysis. Specifying
 a \code{min.code.count=NA} will permit continuous code count phenotypes.
 
-The default exclusions can be skipped with \code{add.exclusions=F}. In conjuntion with \code{translate=F} 
+The default exclusions can be skipped with \code{add.exclusions=F}. In conjuntion with \code{translate=F}
 (and optionally adjusting \code{min.code.count} and \code{aggregate.fun}), one can use this function as a simple reshaping wrapper.
 }
 \keyword{utilities}

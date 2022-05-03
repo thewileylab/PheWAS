@@ -10,13 +10,15 @@ Description: Functions to perform Phenome Wide Association
  Studies (PheWAS). These functions include the conversion of ICD9CM codes to 
  phecodes (v1.2), statistical analysis, and plotting.
 License: GPL-3
-Depends: dplyr, tidyr, ggplot2 (>= 2.2.0), parallel
-Imports: MASS, meta, magrittr, ggrepel, DT, survival, logistf, lmtest, rlang (>= 1.0.2)
-LazyData: yes
-RoxygenNote: 7.1.2
+Depends: R (>= 3.5.0)
+Imports: dplyr, tidyr, ggplot2 (>= 2.2.0), parallel, MASS, meta, magrittr, ggrepel, DT, survival, logistf, lmtest, rlang (>= 1.0.2)
 Suggests: 
     DBI,
     knitr,
     rmarkdown,
     RSQLite
 VignetteBuilder: knitr
+LazyData: yes
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.1.2
