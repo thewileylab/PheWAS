@@ -45,7 +45,6 @@
 #' @export
 #'
 #' @examples
-#' \dontrun{
 #' library(PheWAS)
 #' library(DBI)
 #' library(dplyr)
@@ -73,7 +72,7 @@
 #' ## Create Phenotypes in Database
 #' phenotype_table <- db_createPhenotypes(id.vocab.code.index = db_icd_summary, 
 #'                                        min.code.count = 2, 
-#'                                        add.phecode.exclusions = T, 
+#'                                        add.phecode.exclusions = TRUE, 
 #'                                        id.sex = db_id_sex,
 #'                                        vocabulary.map = db_phecode_map, 
 #'                                        rollup.map = db_phecode_rollup_map, 
@@ -83,7 +82,7 @@
 #'   collect()
 #' local_phenotype_table %>% 
 #'   pivot_wider(names_from = code, values_from = case_status)
-#' }
+#' 
 
 db_createPhenotypes <- function(id.vocab.code.index, 
                                 min.code.count=2, 
