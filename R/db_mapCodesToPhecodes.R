@@ -9,16 +9,16 @@
 #' 
 #' @keywords utilities
 #'
-#' @param input Data frame containing \code{vocabulary_id} and \code{code} columns. These columns specify the vocabulary 
+#' @param input A `tbl()` source connection containing \code{vocabulary_id} and \code{code} columns. These columns specify the vocabulary 
 #' used in each row, eg ICD9CM or ICD10CM, and the code to be translated. \code{code} must be a character or factor to 
 #' ensure proper conversion (ICD9CM codes lose specificity as numeric).
-#' @param vocabulary.map Data frame with columns \code{vocabulary_id}, \code{code}, and \code{phecode}. Each row 
-#' represents a mapping from a specific vocabulary and code to a specific phecode. The default map 
+#' @param vocabulary.map A `tbl()` source connection with columns \code{vocabulary_id}, \code{code}, and \code{phecode}. Each row 
+#' represents a mapping from a specific vocabulary and code to a specific phecode. The default map (for offline use)
 #' \code{\link[PheWAS:phecode_map]{PheWAS::phecode_map}} supports ICD9CM (map v1.2) and ICD10CM (map 2018 beta). If 
 #' \code{NULL}, it will skip the mapping codes to phecodes step. This may be useful if one is seeking to expand or 
 #' roll up an existing set of phecodes.
-#' @param rollup.map Data frame with columns \code{code}, and \code{phecode_unrolled}. Each row represents a mapping 
-#' from a specific phecode to all parent phecodes. The default map \code{\link[PheWAS:phecode_rollup_map]{PheWAS::phecode_rollup_map}} 
+#' @param rollup.map A `tbl()` source connection with columns \code{code}, and \code{phecode_unrolled}. Each row represents a mapping 
+#' from a specific phecode to all parent phecodes. The default map (for offline use) \code{\link[PheWAS:phecode_rollup_map]{PheWAS::phecode_rollup_map}} 
 #' is the complete rollup map for phecode map v1.2. If \code{NULL}, it will skip the rollup step. This may be useful 
 #' if one is seeking to only consider the directly mapped phecodes.
 #' @param make.distinct Boolean value. Should duplicate rows be removed during mapping? Default is \code{TRUE}. 
@@ -28,7 +28,7 @@
 #' @importFrom magrittr %>% extract2
 #' @importFrom rlang abort format_error_bullets warn
 #'
-#' @return A DBI tbl connection containing the columns in \code{input}, except the origial \code{code} and \code{vocabulary_id} 
+#' @return A `tbl()` source connection containing the columns in \code{input}, except the origial \code{code} and \code{vocabulary_id} 
 #' columns have been replaced with \code{phecode} now containing the phecode as character. 
 #' @export
 #'
@@ -37,6 +37,7 @@
 #' library(DBI)
 #' library(dplyr)
 #' library(RSQLite)
+#' 
 #' ## Create example data
 #' diabetes_billing=data.frame(id=1:3,
 #'                             vocabulary_id=c("ICD9CM","ICD9CM","ICD10CM"),
@@ -46,10 +47,12 @@
 #' dbWriteTable(con, 'diabetes_billing', diabetes_billing)
 #' dbWriteTable(con, 'phecode_map', PheWAS::phecode_map)
 #' dbWriteTable(con, 'phecode_rollup_map', PheWAS::phecode_rollup_map)
+#' 
 #' ## Define tbl connections to example database
 #' db_diabetes_billing <- tbl(con, 'diabetes_billing')
 #' db_phecode_map <- tbl(con, 'phecode_map')
 #' db_phecode_rollup_map <- tbl(con, 'phecode_rollup_map')
+#' 
 #' ## Perform phecode mapping
 #' phecodes <- db_mapCodesToPhecodes(input = db_diabetes_billing, 
 #'                                   vocabulary.map = db_phecode_map,

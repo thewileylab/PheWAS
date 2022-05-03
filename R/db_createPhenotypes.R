@@ -7,41 +7,43 @@
 #' By default, this function returns a long format data frame with boolean phenotypes suitable for PheWAS analysis. Specifying 
 #' a \code{min.code.count=NA} will permit continuous code count phenotypes.
 #' 
-#' The default exclusions can be skipped with \code{add.exclusions=F}. In conjuntion with \code{translate=F} 
-#' (and optionally adjusting \code{min.code.count} and \code{aggregate.fun}), one can use this function as a simple reshaping wrapper.
+#' The default exclusions can be skipped with \code{add.exclusions=F}. 
 #' 
 #' @description 
-#' This function takes a data frame with four columns: id, vocabulary_id, code, and index. It returns a wide table with phecodes as 
-#' TRUE/FALSE/NA. It can optionally use the PheWAS exclusion criteria.
+#' This function accepts a `tbl()` source connection with four columns: id, vocabulary_id, code, and index. It returns a long 
+#' table with id, phecodes and case_status as TRUE/FALSE/NA. It can optionally use the PheWAS exclusion criteria.
 #' 
 #' @keywords utilities
 #'
-#' @param id.vocab.code.index Data frame with four columns of information: id, vocabulary_id, code, and index. The id and index 
-#' columns can have other names, but id must be consistent among input files. The vocabulary_id and code must match up with the 
-#' vocabulary.map file. The default supports the vocabularies "ICD9CM" and "ICD10CM". Code contains the raw code value.
+#' @param id.vocab.code.index A `tbl()` source connection with four columns of information: id, vocabulary_id, code, and index. The 
+#' id and index columns can have other names, but id must be consistent among input files. The vocabulary_id and code must match 
+#' up with the vocabulary.map file. The default supports the vocabularies "ICD9CM" and "ICD10CM". Code contains the raw code value.
 #' @param min.code.count The minimum code count to be considered a case. NA results in a continuous output.
-#' @param add.phecode.exclusions Apply PheWAS exclusions to phecodes.
+#' @param add.phecode.exclusions Apply PheWAS exclusions to phecodes. Defaults to TRUE.
 #' @param translate Should the input be translated to phecodes? Defaults to TRUE. Generally recommended, though can be skipped 
 #' if phecodes are provided.
-#' @param id.sex If supplied, restrict the phecodes by sex. This should be a data frame with the first column being the id and 
-#' the second the sex, "M" or "F", of the individual. Individuals with any other specification will have all sex specific phenotypes 
-#' set to NA.
+#' @param id.sex If supplied, restrict the phecodes by sex. This should be a `tbl()` source connection with the first column being 
+#' the id and the second the sex, "M" or "F", of the individual. Individuals with any other specification will have all sex specific 
+#' phenotypes set to NA.
 #' @param full.population.ids List of IDs in the "complete" population. This allows for individuals with no observed codes to have 
 #' appropriate "control" status, eg 0s or FALSE in every field.
-#' @param vocabulary.map Map between supplied vocabularies and phecodes. Allows for custom phecode maps. By default uses 
-#' \code{\link[PheWAS:phecode_map]{PheWAS::phecode_map}}, which supports ICD9CM (v1.2) and ICD10CM (beta-2018). The package also 
-#' includes the ICD10 beta map (\code{\link[PheWAS:phecode_map_icd10]{PheWAS::phecode_map_icd10}}), which can be used in this parameter.
-#' @param rollup.map Map between phecodes and all codes that they expand to, eg parent codes. By default uses the PheWAS::phecode_rollup_map.
-#' @param exclusion.map Map between phecodes and their exclusions. By default uses the PheWAS::phecode_exclude.
+#' @param vocabulary.map A `tbl()` source connection to the map between supplied vocabularies and phecodes. Allows for custom phecode 
+#' maps. By default (for offline use) uses \code{\link[PheWAS:phecode_map]{PheWAS::phecode_map}}, which supports ICD9CM (v1.2) and 
+#' ICD10CM (beta-2018). The package also includes the ICD10 beta map (\code{\link[PheWAS:phecode_map_icd10]{PheWAS::phecode_map_icd10}}), 
+#' which can be used in this parameter.
+#' @param rollup.map A `tbl()` source connection to the map between phecodes and all codes that they expand to, eg parent codes. By default 
+#' (for offline use) uses PheWAS::phecode_rollup_map.
+#' @param exclusion.map A `tbl()` source connection to the map between phecodes and their exclusions. By default (for offline use) uses 
+#' PheWAS::phecode_exclude.
 #'
 #' @importFrom dplyr collect compute count distinct group_by filter inner_join left_join pull rename select summarise transmute type_sum union_all
 #' @importFrom magrittr %>% extract2
 #' @importFrom rlang .data abort format_error_bullets inform warn
 #' @importFrom utils head
 #' 
-#' @return A DBI tbl connection. The first column contains the supplied id for each individual (preserving the name of the original column). 
-#' The following columns contain the phecode and case_status of all present phewas codes. They contain T/F/NA for case/control/exclude or 
-#' continuous/NA if min.code.count was NA.
+#' @return A `tbl()` source connection. The first column contains the supplied id for each individual (preserving the name of the original column). 
+#' The following columns contain the phecode and case_status of all present ids/phewas codes. The case_status contains T/F/NA for 
+#' case/control/exclude or continuous/NA if min.code.count was NA.
 #' @export
 #'
 #' @examples
@@ -50,25 +52,31 @@
 #' library(dplyr)
 #' library(RSQLite)
 #' library(tidyr)
+#' 
 #' ## Create DBI connection object to target database
 #' con <- dbConnect(RSQLite::SQLite(), ":memory:")
 #' ## Generate Example Data
 #' set.seed(2020)
 #' example_data <- PheWAS::generateExample(n = 50)
+#' 
 #' ## Create Example Database
 #' dbWriteTable(con, 'id.vocab.code.count', example_data$id.vocab.code.count)
 #' dbWriteTable(con, 'id.sex', example_data$id.sex)
-#' ## Upload PheWAS package data
+#' 
+#' ## Upload PheWAS Package Data to Database
 #' dbWriteTable(con, 'phecode_map', PheWAS::phecode_map)
 #' dbWriteTable(con, 'phecode_rollup_map', PheWAS::phecode_rollup_map)
 #' dbWriteTable(con, 'phecode_exclude', PheWAS::phecode_exclude)
+#' 
 #' ## Define tbl connections to example data
 #' db_icd_summary <- tbl(con, 'id.vocab.code.count')
 #' db_id_sex <- tbl(con, 'id.sex')
+#' 
 #' ## Define tbl connections to PheWAS package Datasets
 #' db_phecode_map <- tbl(con, 'phecode_map')
 #' db_phecode_rollup_map <- tbl(con, 'phecode_rollup_map')
 #' db_phecode_exclude <- tbl(con, 'phecode_exclude')
+#' 
 #' ## Create Phenotypes in Database
 #' phenotype_table <- db_createPhenotypes(id.vocab.code.index = db_icd_summary, 
 #'                                        min.code.count = 2, 
@@ -78,6 +86,8 @@
 #'                                        rollup.map = db_phecode_rollup_map, 
 #'                                        exclusion.map = db_phecode_exclude
 #' )
+#' 
+#' ## Download Phenotypes
 #' local_phenotype_table <- phenotype_table %>% 
 #'   collect()
 #' local_phenotype_table %>% 

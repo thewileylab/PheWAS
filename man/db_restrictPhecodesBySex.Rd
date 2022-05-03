@@ -9,11 +9,11 @@ db_restrictPhecodesBySex(phenotypes, id.sex)
 \arguments{
 \item{phenotypes}{The PheWAS table to have restrictions applied. The first column should be the id.}
 
-\item{id.sex}{A DBI tbl connection with the first column being the id and the second the gender, "M" or "F", of the
+\item{id.sex}{A \code{tbl()} source connection with the first column being the id and the second the gender, "M" or "F", of the
 individual. Individuals with any other specification will have all gender specific phenotypes set to NA.}
 }
 \value{
-The \code{phenotypes} tbl connection with NA values for individuals that do not match the gender for
+The \code{phenotypes} \code{tbl()} source connection with NA values for individuals that do not match the gender for
 gender-specific codes.
 }
 \description{
