@@ -19,7 +19,6 @@
 #' gender-specific codes.
 #' @export
 #'
-#' @examples
 
 db_restrictPhecodesBySex <- function(phenotypes,
                                       id.sex) 

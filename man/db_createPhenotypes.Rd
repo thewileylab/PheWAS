@@ -63,4 +63,45 @@ a \code{min.code.count=NA} will permit continuous code count phenotypes.
 The default exclusions can be skipped with \code{add.exclusions=F}. In conjuntion with \code{translate=F}
 (and optionally adjusting \code{min.code.count} and \code{aggregate.fun}), one can use this function as a simple reshaping wrapper.
 }
+\examples{
+\dontrun{
+library(PheWAS)
+library(DBI)
+library(dplyr)
+library(RSQLite)
+library(tidyr)
+## Create DBI connection object to target database
+con <- dbConnect(RSQLite::SQLite(), ":memory:")
+## Generate Example Data
+set.seed(2020)
+example_data <- PheWAS::generateExample(n = 50)
+## Create Example Database
+dbWriteTable(con, 'id.vocab.code.count', example_data$id.vocab.code.count)
+dbWriteTable(con, 'id.sex', example_data$id.sex)
+## Upload PheWAS package data
+dbWriteTable(con, 'phecode_map', PheWAS::phecode_map)
+dbWriteTable(con, 'phecode_rollup_map', PheWAS::phecode_rollup_map)
+dbWriteTable(con, 'phecode_exclude', PheWAS::phecode_exclude)
+## Define tbl connections to example data
+db_icd_summary <- tbl(con, 'id.vocab.code.count')
+db_id_sex <- tbl(con, 'id.sex')
+## Define tbl connections to PheWAS package Datasets
+db_phecode_map <- tbl(con, 'phecode_map')
+db_phecode_rollup_map <- tbl(con, 'phecode_rollup_map')
+db_phecode_exclude <- tbl(con, 'phecode_exclude')
+## Create Phenotypes in Database
+phenotype_table <- db_createPhenotypes(id.vocab.code.index = db_icd_summary, 
+                                       min.code.count = 2, 
+                                       add.phecode.exclusions = T, 
+                                       id.sex = db_id_sex,
+                                       vocabulary.map = db_phecode_map, 
+                                       rollup.map = db_phecode_rollup_map, 
+                                       exclusion.map = db_phecode_exclude
+)
+local_phenotype_table <- phenotype_table \%>\% 
+  collect()
+local_phenotype_table \%>\% 
+  pivot_wider(names_from = code, values_from = case_status)
+}
+}
 \keyword{utilities}

@@ -33,6 +33,27 @@
 #' @export
 #'
 #' @examples
+#' \dontrun{
+#' library(PheWAS)
+#' library(DBI)
+#' library(dplyr)
+#' library(RSQLite)
+#' ## Create example data
+#' diabetes_billing=data.frame(id=1:3,vocabulary_id=c("ICD9CM","ICD9CM","ICD10CM"),code=c("250.00","250.01","E11.00"))
+#' ## Upload to example database
+#' con <- dbConnect(RSQLite::SQLite(), ":memory:")
+#' dbWriteTable(con, 'diabetes_billing', diabetes_billing)
+#' dbWriteTable(con, 'phecode_map', PheWAS::phecode_map)
+#' dbWriteTable(con, 'phecode_rollup_map', PheWAS::phecode_rollup_map)
+#' ## Define tbl connections to example database
+#' db_diabetes_billing <- tbl(con, 'diabetes_billing')
+#' db_phecode_map <- tbl(con, 'phecode_map')
+#' db_phecode_rollup_map <- tbl(con, 'phecode_rollup_map')
+#' ## Perform phecode mapping
+#' phecodes <- db_mapCodesToPhecodes(input = db_diabetes_billing, 
+#'                                   vocabulary.map = db_phecode_map,
+#'                                   rollup.map = db_phecode_rollup_map)
+#' }
 
 db_mapCodesToPhecodes <-
   function(input,
