@@ -14,6 +14,8 @@ knitr::opts_chunk$set(
 )
 ```
 
+## Setup
+
 ```{r setup}
 library(PheWAS)
 library(DBI)
@@ -24,36 +26,56 @@ library(tidyr)
 
 ## Overview
 
-## Generate Example Data
+When working with data stored in remote database or with exceptionally large data that exceeds the capabilities of your local workstation it may be advantageous to generate a phenotype table using the remote database's resources. The PheWAS package provides database optimized versions of `PheWAS::createPhenotypes()` and `PheWAS::mapCodesToPhecodes()` for use in these situations. 
+
+## Create Phenotypes in Database
+
+To illustrate the utility of `PheWAS::db_createPhenotypes()`, data are generated using `PheWAS::generateExample()` and then uploaded to an in memory SQLite database created with the RSQLite package. 
+
+### Generate Example Data
+
+First, for the purposes of this vignette, simulated data are created and stored locally. The output will be a list with three named items:
+
+* id.vocab.code.count: A data frame of columns id, vocabulary_id, ICD code, and count suitable for transformation by createPhenotypes.
+* genotypes: A data frame of columns id and rsEXAMPLE, suitable for use in phewas after joining with phenotypic data.
+* id.sex: A data frame of columns id and sex, suitable for use in phewas and createPhenotypes.
+
+The `ic.vocab.code.count` and `id.sex` returns will be used to construct an example database on which `PheWAS::db_createPhenotypes()` may be run.
 
 ```{r}
 set.seed(2020)
 example_data <- PheWAS::generateExample(n = 50)
 ```
 
-## Create Example Database
+### Create Example Database
 
-To illustrate the utility of `PheWAS::db_createPhenotypes()`, data are generated using `PheWAS::generateExample()` and uploaded to an in memory SQLite database created with the RSQLite package. 
+Next, using the RSQLite package, a database is created in memory. While SQLite is used for this example, any dplyr compatible database back-end may be used. A full list of supported databases can be found [here](https://db.rstudio.com/databases/)
 
 ```{r}
 ## Create DBI connection object to target database
 con <- dbConnect(RSQLite::SQLite(), ":memory:")
+```
 
+### Upload Example Data to Database
+
+Simulated data that was previously stored locally is now uploaded to our example database.
+
+```{r}
 ## Create Example Database
 dbWriteTable(con, 'id.vocab.code.count', example_data$id.vocab.code.count)
 dbWriteTable(con, 'id.sex', example_data$id.sex)
 ```
 
-## Upload PheWAS Package Datasets to Target Database
+### Upload PheWAS Package Datasets to Target Database
 
-In order to generate phenotypes using db_createPhenotypes(), the following PheWAS package datasets need to be uploaded to the target database:
+In order to generate phenotypes using `PheWAS::db_createPhenotypes()`, a code map, rollup map, and optionally phecode exclusions need to be present in as tables in the target database. While custom mapings may be used, the following PheWAS package datasets can be uploaded to the database for use with this function:
 
-* PheWAS::phecode_map
-* PheWAS::phecode_rollup_map
-* PheWAS::phecode_exclude
+* `PheWAS::phecode_map`
+* `PheWAS::phecode_rollup_map`
+* `PheWAS::phecode_exclude`
 
 ```{r}
-## Upload PheWAS package data
+## Upload PheWAS package data to database
 dbWriteTable(con, 'phecode_map', PheWAS::phecode_map)
 dbWriteTable(con, 'phecode_rollup_map', PheWAS::phecode_rollup_map)
 dbWriteTable(con, 'phecode_exclude', PheWAS::phecode_exclude)
@@ -61,20 +83,24 @@ dbWriteTable(con, 'phecode_exclude', PheWAS::phecode_exclude)
 
 ## Create Phenotypes in Database
 
-Create `tbl()` connections to the source data in our example database.
+### Create Source Connections
+
+Now, `tbl()` source connections must be created to the simulated data in our example database. These will ultimately be supplied to `PheWAS::db_createPhenotypes()` as arguments.
 
 ```{r}
-## Define tbl connections to example data
+## Define tbl source connections to example data in target database
 db_icd_summary <- tbl(con, 'id.vocab.code.count')
 db_id_sex <- tbl(con, 'id.sex')
 
-## Define tbl connections to PheWAS package Datasets
+## Define tbl source connections to PheWAS package datasets in target database
 db_phecode_map <- tbl(con, 'phecode_map')
 db_phecode_rollup_map <- tbl(con, 'phecode_rollup_map')
 db_phecode_exclude <- tbl(con, 'phecode_exclude')
 ```
 
-Supply `tbl()` source connections as arguments to the `db_createPhenotypes()` function.
+### Create Phenotypes
+
+Finally, `PheWAS::db_createPhenotypes()` may be run using the `tbl()` source connections created in the previous section:
 
 ```{r}
 ## Create Phenotypes in Database
@@ -86,18 +112,22 @@ phenotype_table <- db_createPhenotypes(id.vocab.code.index = db_icd_summary,
                                        rollup.map = db_phecode_rollup_map, 
                                        exclusion.map = db_phecode_exclude
                                        )
+phenotype_table
 ```
 
-## Download Phenotypes
+Behind the scenes, `PheWAS::db_createPhenotypes()`, with the help of the [DBI](https://db.rstudio.com/dbi/) and [dbplyr](https://dbplyr.tidyverse.org/) packages from RStudio will operate on the remote database as if it were a local, in-memory data frame. R code written with [dplyr](https://dplyr.tidyverse.org/) verbs are automatically translated to SQL by the dbplyr package and sent to the connected database with instructions to create a phenotype table suitable for PheWAS analysis.
 
-The output of `db_createPhenotypes()` will be a `tbl()` source connection. To download the phemapped data to the R environment, run the following:
+## Download Phenotypes from Database
+
+The output of `db_createPhenotypes()` will be a `tbl()` source connection to your phenotype table. To (optionally) download the phemapped data to the R environment, run the following:
 
 ```{r}
 local_phenotype_table <- phenotype_table %>% 
   collect()
 ```
 
-Finally, transform the data from long to wide format for use with the rest of the PheWAS package:
+Finally, if further analysis is desired utilizing additional PheWAS package functions, transform the data from long to wide format:
+
 ```{r}
 local_phenotype_table_wide <- local_phenotype_table %>% 
   pivot_wider(names_from = code, values_from = case_status)
