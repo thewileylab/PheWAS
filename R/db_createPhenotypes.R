@@ -36,7 +36,7 @@
 #' @param exclusion.map A `tbl()` source connection to the map between phecodes and their exclusions. By default (for offline use) uses 
 #' PheWAS::phecode_exclude.
 #'
-#' @importFrom dplyr collect compute count distinct group_by filter inner_join left_join pull rename select summarise transmute type_sum union_all
+#' @importFrom dplyr collect compute count distinct group_by filter inner_join left_join n_distinct pull rename select summarise transmute type_sum union_all
 #' @importFrom magrittr %>% extract2
 #' @importFrom rlang .data abort format_error_bullets inform warn
 #' @importFrom utils head
@@ -115,11 +115,11 @@ db_createPhenotypes <- function(id.vocab.code.index,
   ## Translate to Phecode ----  
   if( !translate ) {
     ### Warn about exclusions if input is not translated and not phecodes. 
-    if(add.phecode.exclusions & id.vocab.code.index %>% count(.data$code) %>% pull(.data$n) %>% sum() !=  id.vocab.code.index %>% count() %>% pull(n)) {
+    if(add.phecode.exclusions & id.vocab.code.index %>% count(.data$code) %>% pull(.data$n) %>% as.integer() %>% sum() !=  id.vocab.code.index %>% count() %>% pull(n) %>% as.integer() ) {
       abort("Codes are not translated and vocab is not 'phecode' for every row, but exclusions are to be applied. Ensure that the code column has only phecodes or disable add.phecode.exclusions for accurate results.")
     }
     ### Warn about exclusions if input is not translated and not phecodes.
-    if( !missing(id.sex)  & id.vocab.code.index %>% count(.data$code) %>% pull(.data$n) %>% sum() !=  id.vocab.code.index %>% count() %>% pull(.data$n)) {
+    if( !missing(id.sex)  & id.vocab.code.index %>% count(.data$code) %>% pull(.data$n) %>% as.integer() %>% sum() !=  id.vocab.code.index %>% count() %>% pull(.data$n) %>% as.integer() ) {
       abort("Codes are not translated and vocab is not 'phecode' for every row, but id.sex is supplied for sex-based exclusions. Ensure that the code column has only phecodes or omit id.sex for accurate results.")
     }
     phemapped=id.vocab.code.index
@@ -149,7 +149,7 @@ db_createPhenotypes <- function(id.vocab.code.index,
   } else {
     phecode <- phemapped %>%
       group_by(.data$id,.data$code) %>%
-      summarise(count = length(distinct(.data$index)), .groups = 'drop' )
+      summarise(count = n_distinct(.data$index), .groups = 'drop' )
   }
   phecode <- phecode %>%
     filter(.data$count > 0)
