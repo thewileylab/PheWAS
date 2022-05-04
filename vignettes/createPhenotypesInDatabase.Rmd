@@ -114,6 +114,7 @@ phenotype_table <- db_createPhenotypes(id.vocab.code.index = db_icd_summary,
                                        )
 phenotype_table
 ```
+*Note: The SQLite database backend [does not support boolean data types](https://www.sqlite.org/datatype3.html) and instead will return 0 (FALSE), 1 (TRUE) and NA for `case_status`.
 
 Behind the scenes, `PheWAS::db_createPhenotypes()`, with the help of the [DBI](https://db.rstudio.com/dbi/) and [dbplyr](https://dbplyr.tidyverse.org/) packages from RStudio will operate on the remote database as if it were a local, in-memory data frame. R code written with [dplyr](https://dplyr.tidyverse.org/) verbs are automatically translated to SQL by the dbplyr package and sent to the connected database with instructions to create a phenotype table suitable for PheWAS analysis.
 
