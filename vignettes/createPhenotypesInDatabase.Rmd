@@ -68,7 +68,7 @@ dbWriteTable(con, 'id.sex', example_data$id.sex)
 
 ### Upload PheWAS Package Datasets to Target Database
 
-In order to generate phenotypes using `PheWAS::db_createPhenotypes()`, a code map, rollup map, and optionally phecode exclusions need to be present in as tables in the target database. While custom mapings may be used, the following PheWAS package datasets can be uploaded to the database for use with this function:
+In order to generate phenotypes using `PheWAS::db_createPhenotypes()`, a code map, rollup map, and optionally phecode exclusions need to be present in as tables in the target database. While custom mappings may be used, the following PheWAS package datasets can be uploaded to the database for use with this function:
 
 * `PheWAS::phecode_map`
 * `PheWAS::phecode_rollup_map`
@@ -127,7 +127,7 @@ local_phenotype_table <- phenotype_table %>%
   collect()
 ```
 
-Finally, if further analysis is desired utilizing additional PheWAS package functions, transform the data from long to wide format:
+If further analysis utilizing additional PheWAS package functions is required, transform the data from long to wide format:
 
 ```{r}
 local_phenotype_table_wide <- local_phenotype_table %>% 
