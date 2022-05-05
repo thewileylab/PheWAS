@@ -20,7 +20,7 @@ There are many potential data sources and types; this necessitates that users ha
 \subsection{Preparing plink data}
 Genome wide data is stored commonly stored in plink formats\footnote{See
   \url{http://pngu.mgh.harvard.edu/~purcell/plink/data.shtml}
-  for plink data format details.}. The simplest method to import data from plink is the \code{--recodeA} parameter in plink\footnote{See \url{http://pngu.mgh.harvard.edu/~purcell/plink/dataman.shtml#recode} for details}. Running the following in a terminal will get one started:\\
+  for plink data format details.}. The simplest method to import data from plink is the \code{--recodeA} parameter in plink\footnote{See \url{http://pngu.mgh.harvard.edu/~purcell/plink/dataman.shtml\#recode} for details}. Running the following in a terminal will get one started:\\
 \code{
 plink --recodeA --bfile example\_data --extract interesting\_snps\\
 \ --out r\_genotypes
